@@ -17,11 +17,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - name: Reassemble and safely unpack frontend bundle
+      - name: Reassemble, verify, and safely unpack frontend bundle
         shell: bash
         run: |
           python - <<'PY'
           import base64
+          import hashlib
           import pathlib
           import shutil
           import zipfile
@@ -32,6 +33,10 @@ jobs:
               raise RuntimeError(f"Expected 9 archive parts; found {len(parts)}")
           encoded = "".join(part.read_text(encoding="ascii").strip() for part in parts)
           payload = base64.b64decode(encoded, validate=True)
+          digest = hashlib.sha256(payload).hexdigest()
+          expected = "35e000ef43f25d809505c979a1ece47203eb1e3e34fa2cd543dc97aa2b2d5c31"
+          if digest != expected:
+              raise RuntimeError(f"Frontend package SHA-256 mismatch: {digest}")
           archive = pathlib.Path("/tmp/nexus-release.zip")
           archive.write_bytes(payload)
 
@@ -45,7 +50,7 @@ jobs:
 
           shutil.rmtree(upload)
           pathlib.Path(".github/workflows/publish-nexus-frontend.yml").unlink()
-          print(f"Extracted {len(parts)} package chunks into the repository.")
+          print(f"Verified package SHA-256 {digest}; extracted {len(parts)} segments.")
           PY
       - name: Commit complete frontend
         shell: bash
