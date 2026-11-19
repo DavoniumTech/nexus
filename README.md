@@ -1,46 +1,51 @@
-# Davonium Nexus — Live Frontend
+# Davonium Nexus — Company Operating System
 
-A responsive, static frontend for the existing Davonium Technologies Supabase project `cmkroryimxskgqlaiiym`.
+A responsive, static web application for the existing Davonium Technologies Supabase workspace. It brings the company's delivery, people, clients, products, governance, documents, communication, security, and read-only intelligence workflows into one authenticated interface.
 
-## Important design and security choices
+## What is included
 
-- Uses the existing Supabase Auth session and signed-in user's JWT.
-- Calls the deployed Edge Functions; it does not replace, migrate, or redeploy them.
-- Uses the `bright-task` URL slug for the dashboard's `nexus-permissions` function.
-- Does not contain a service-role key, Gemini API key, or `NEXUS_AI_LEDGER_KEY`.
-- Does not bypass RLS or permission checks.
-- Uses the existing organization slug `davonium-technologies`.
-- Includes workspace, command centre, projects, tasks, clients, people, investors, products/analytics, objectives, documents, communications, announcements, notifications, DVNM Intelligence, monitoring, audit and permissions areas.
+- Command centre: live workspace overview, delivery signals, project status, service status, incidents, and notifications.
+- Execution: projects, tasks, project members, milestones, task discussions, project decision records, and deadlines.
+- Company operations: client accounts, members, invitations, role and membership administration, teams, departments, and permission overrides.
+- Product operations: product catalogue, metric definitions, verified metrics, manual-metric review, metric history, integration records, ingestion history, and release notes.
+- Governance: objectives, key results, decision ledger, weekly company reviews, investor updates, and investor access.
+- Secure collaboration: private document upload/download, controlled client visibility, channels, direct messages, membership administration, moderation, announcements, and personal inbox/preferences.
+- DVNM Intelligence: persistent company conversations, service/policy/usage information, and read-only data analysis under existing server-side quotas and consent checks.
+- Control: service telemetry, recorded service components, incidents, session assurance, audit history, effective permission catalogue, and secure connection settings.
+- Role-scoped client and investor portal pages.
 
-## Deploy without a local build
+## Run requirements
 
-This is a static HTML/CSS/JavaScript site. No npm, Node, CLI, Docker or build step is required.
+This is a static HTML/CSS/JavaScript app. No package installation, Node build, Docker, CLI, or server-side application runtime is required. Serve the repository root as static files.
 
-1. Create/open the GitHub repository `DavoniumTech/nexus`.
-2. Upload the contents of this ZIP (not the ZIP file itself) to the repository root.
-3. Commit to `main`.
-4. In Cloudflare Pages, connect the GitHub repository.
-5. Framework preset: **None**. Build command: leave empty. Build output directory: `/` (or `.` if the dashboard requires a relative path).
-6. Deploy.
+On first open, select **Connection settings** and enter:
 
-## First sign-in
-
-Open the deployed site. Configure:
 - Project URL: `https://cmkroryimxskgqlaiiym.supabase.co`
-- Publishable/anon key: copy from Supabase Project Settings → API Keys.
+- Key: the Supabase **publishable** key (or legacy anon key) from the project's API settings.
 
-Then sign in with an existing authorized employee account. Do not use the service-role key.
+Then sign in with an existing, active Davonium workspace account. The app resolves the workspace using its signed-in session and the `davonium-technologies` slug. The default workspace URL is already configured; the browser key is intentionally not included in the repository.
 
-## Known integration notes
+## Backend integration
 
-This is a first frontend integration pass against the exported Edge Function source. The server functions remain the source of truth. Some pages intentionally show clear empty/error states when a function action is denied, not implemented for a role, or returns a different payload shape.
+The frontend calls the existing 17 deployed Supabase Edge Functions. See [`backend-reference/EDGE-FUNCTION-ACTION-MAP.md`](backend-reference/EDGE-FUNCTION-ACTION-MAP.md) for the URL slugs, user-facing actions, and server-only operations deliberately not exposed to the browser.
 
-The Documents page lists records and explains the private upload boundary; an end-to-end file picker/upload UI must be aligned to the exact `upload.prepare` and `upload.complete` request contract before enabling uploads. Similarly, the current project detail action is a safe read invocation; task and project creation forms use the exported function action names but must be verified against live required fields before production use.
+All workspace writes are sent through the existing Edge Functions and their database permission/RLS checks. The app does not directly write to company tables from the browser. The private document workflow uses a signed upload request followed by metadata registration; downloads use short-lived signed URLs. The private bucket is `nexus-private-documents`; the frontend enforces the backend's 25 MB upload limit and supported MIME types.
 
-DVNM Intelligence chat calls the existing conversation create/get and `chat` actions. The backend's free-tier quotas and privacy controls remain authoritative. The UI never raises the configured token or spend limits.
+## Security boundaries
 
-## Files
+- Never paste a Supabase `service_role` key into the browser. The app rejects a decoded service-role JWT and only accepts a publishable/anon project key.
+- Gemini API keys and `NEXUS_AI_LEDGER_KEY` remain in Supabase Edge Function Secrets. They are never referenced as browser configuration values.
+- Authentication is handled by Supabase Auth. Every Edge Function call carries the publishable API key and the current signed-in user's access token.
+- The database and Edge Functions are authoritative. Hiding a button is not a security boundary.
+- The frontend does not expose trusted monitor execution, integration provider tests, notification provider tests, or trusted-server notification creation.
+- DVNM Intelligence is not presented as an unrestricted general-purpose agent. It remains read-only and does not bypass the deployed budget, rate, output-token, or permission policies. The enable flow requires explicit workspace consent confirmation.
 
-- `index.html` — application shell and navigation
-- `styles.css` — responsive dark glass / luminous starfield UI
-- `app.js` — authentication, Edge Function client, module views and actions
+## Design direction
+
+Davonium's dark navy, cyan and blue identity, subtle star field, soft glow, and rounded surfaces are retained. The interaction system combines focused workspace navigation, a keyboard-driven command palette, consistent data-table and status treatments, role-aware operational views, and clear service-state/empty/error messaging. The interface draws on published product patterns from Linear, Raycast, Attio, Stripe dashboard design work, Vercel observability, and Notion database views; it is an original Davonium interface, not a copy of another product.
+
+See [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) for the design principles and tokens.
+
+## Verification note
+
+The frontend source was syntax-checked and the static shell was served locally during preparation. The app has not been authenticated against the owner's live workspace in this build environment, so account-specific permissions, real data, and every write path still require a signed-in browser verification after the correct publishable key is entered. The deployed Supabase functions and database were not changed by this frontend build.
