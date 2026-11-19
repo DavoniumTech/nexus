@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - ".nexus-release.zip"
+      - ".nexus-upload/READY"
 
 permissions:
   contents: write
@@ -17,14 +17,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - name: Safely unpack frontend bundle
+      - name: Reassemble and safely unpack frontend bundle
         shell: bash
         run: |
           python - <<'PY'
+          import base64
           import pathlib
+          import shutil
           import zipfile
 
-          archive = pathlib.Path(".nexus-release.zip")
+          upload = pathlib.Path(".nexus-upload")
+          parts = sorted(upload.glob("part-*.b64"))
+          if len(parts) != 9:
+              raise RuntimeError(f"Expected 9 archive parts; found {len(parts)}")
+          encoded = "".join(part.read_text(encoding="ascii").strip() for part in parts)
+          payload = base64.b64decode(encoded, validate=True)
+          archive = pathlib.Path("/tmp/nexus-release.zip")
+          archive.write_bytes(payload)
+
           root = pathlib.Path.cwd().resolve()
           with zipfile.ZipFile(archive) as bundle:
               for item in bundle.infolist():
@@ -32,9 +42,10 @@ jobs:
                   if target != root and root not in target.parents:
                       raise RuntimeError(f"Unsafe archive path: {item.filename}")
               bundle.extractall(root)
-          archive.unlink()
+
+          shutil.rmtree(upload)
           pathlib.Path(".github/workflows/publish-nexus-frontend.yml").unlink()
-          print("Frontend files extracted.")
+          print(f"Extracted {len(parts)} package chunks into the repository.")
           PY
       - name: Commit complete frontend
         shell: bash
