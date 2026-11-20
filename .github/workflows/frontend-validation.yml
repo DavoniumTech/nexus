@@ -26,12 +26,12 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           root = Path(".")
-          required = ["index.html", "styles.css", "app.js", "favicon.svg"]
+          required = ["index.html", "styles.css", "app.js", "favicon.svg", "assets/branding/davonium-d-icon.webp", "assets/branding/davonium-nexus.svg", "assets/branding/davonium-starfield.svg"]
           missing = [item for item in required if not (root / item).is_file()]
           if missing:
               raise SystemExit("Missing required files: " + ", ".join(missing))
           html = (root / "index.html").read_text(encoding="utf-8")
-          for asset in ('href="./styles.css"', 'src="./app.js"', 'https://www.davoniumtech.com/assets/images/davonium-d-icon.webp'):
+          for asset in ('href="./styles.css"', 'src="./app.js"', './assets/branding/davonium-d-icon.webp', './assets/branding/davonium-nexus.svg'):
               if asset not in html:
                   raise SystemExit("index.html is missing expected asset reference: " + asset)
           print("Static application assets and references are present.")
