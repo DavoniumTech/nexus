@@ -329,3 +329,87 @@ body{font-size:16px;line-height:1.6;letter-spacing:0}
   .metric-history-head strong{font-size:14px}
   .metric-history-axis{font-size:11px}
 }
+
+
+/* Whole-product Light appearance, including the sign-in experience */
+.light-theme .auth-screen{
+  background:radial-gradient(ellipse at 18% 18%,rgba(35,180,205,.10),transparent 34%),
+             radial-gradient(ellipse at 86% 76%,rgba(91,113,220,.08),transparent 35%),
+             #f2f7fb;
+  color:#102439;
+}
+.light-theme .auth-brand strong,
+.light-theme .brand-word strong{color:#102439}
+.light-theme .auth-brand small,
+.light-theme .brand-word small{color:#5f7b91}
+.light-theme .auth-story h1{color:#102439}
+.light-theme .auth-story>p{color:#526f86}
+.light-theme .auth-proof{color:#45637a}
+.light-theme .auth-proof b{color:#167e9d}
+.light-theme .auth-card{
+  color:#102439;
+  background:linear-gradient(150deg,#fff 0%,#f7fbfd 58%,#edf5f9 100%);
+  border:1px solid rgba(37,93,125,.17);
+  box-shadow:0 28px 90px rgba(23,58,86,.13),inset 0 1px rgba(255,255,255,.9);
+}
+.light-theme .auth-card h2{color:#102439}
+.light-theme .auth-card>p{color:#5d788e}
+.light-theme .auth-card-top .eyebrow{color:#41768f}
+.light-theme .secure-mark{
+  color:#23748c;
+  border-color:rgba(35,126,157,.2);
+  background:rgba(31,150,177,.07);
+}
+.light-theme .auth-card .field{color:#234258}
+.light-theme .auth-card .field input{
+  color:#102439;
+  background:#fff;
+  border-color:rgba(37,93,125,.2);
+}
+.light-theme .auth-card .field input::placeholder{color:#8498a8}
+.light-theme .auth-card .field-note{color:#71879a}
+.light-theme .auth-links .link-button{color:#187f9e}
+.light-theme .auth-foot{color:#6a8296}
+.light-theme .auth-bottom{color:#6a8296}
+.light-theme .auth-orbit .orbit-core{
+  background:linear-gradient(145deg,#fff,#e9f5fa);
+  border-color:rgba(35,126,157,.3);
+  box-shadow:0 0 55px rgba(32,154,192,.15);
+}
+
+/* Final readability floor for secondary labels and dense operational UI */
+.head-overline,.eyebrow{font-size:13px;letter-spacing:.11em}
+.nav-label{font-size:13px}
+.nav-item kbd{font-size:12px}
+.workspace-meta small,.user-meta small{font-size:13px}
+.auth-brand small,.brand-word small{font-size:12px;letter-spacing:.12em}
+.auth-bottom{font-size:13px}
+.sidebar-health,.breadcrumbs{font-size:13px}
+.nav-count{font-size:12px}
+.btn-small{font-size:13px}
+.data-table th{font-size:13px}
+.cell-sub{font-size:13px}
+.cell-mono{font-size:13px}
+.property small{font-size:13px}
+.activity-time{font-size:13px}
+.command-foot{font-size:13px}
+.app-footer{font-size:13px}
+.ai-side-head small,.ai-thread small,.ai-empty-note,.ai-side-foot{font-size:13px}
+.ai-return-link{font-size:13px}
+.ai-workspace-head p{font-size:14px}
+.ai-status{font-size:13px}
+.ai-message-head,.ai-message-head b{font-size:13px}
+.ai-source-tags{font-size:13px}
+.ai-thinking{font-size:14px}
+.ai-composer-foot,.ai-limits{font-size:13px}
+.portal-summary,.portal-body{font-size:14px}
+.metric-history-axis{font-size:13px}
+.metric-history-head p{font-size:13px}
+.tab-button{font-size:14px}
+.modal-form .field{font-size:14px}
+.modal-form input,.modal-form select,.modal-form textarea{font-size:16px}
+@media(max-width:760px){
+  .auth-bottom{font-size:13px;line-height:1.5;gap:10px}
+  .breadcrumbs{font-size:13px}
+  .nav-item{font-size:14px}
+}
