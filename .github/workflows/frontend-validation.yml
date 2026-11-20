@@ -1,0 +1,107 @@
+name: Nexus frontend validation
+
+on:
+  push:
+    branches:
+      - main
+      - "beta/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate JavaScript syntax
+        run: node --check app.js
+      - name: Validate required static assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+
+          root = Path(".")
+          required = [
+              "index.html", "styles.css", "app.js", "favicon.svg",
+              "assets/branding/davonium-d-icon.webp",
+              "assets/branding/davonium-nexus.svg",
+              "assets/branding/davonium-starfield.svg"
+          ]
+          missing = [item for item in required if not (root / item).is_file()]
+          if missing:
+              raise SystemExit("Missing required files: " + ", ".join(missing))
+
+          html = (root / "index.html").read_text(encoding="utf-8")
+          css = (root / "styles.css").read_text(encoding="utf-8")
+          for asset in (
+              'href="./styles.css"', 'src="./app.js"',
+              './assets/branding/davonium-d-icon.webp',
+              './assets/branding/davonium-nexus.svg'
+          ):
+              if asset not in html:
+                  raise SystemExit("index.html is missing expected asset reference: " + asset)
+
+          if css.count("{") != css.count("}"):
+              raise SystemExit("styles.css has unbalanced CSS braces")
+
+          class VisibleCopy(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.parts = []
+              def handle_data(self, data):
+                  self.parts.append(data)
+              def handle_starttag(self, tag, attrs):
+                  for key, value in attrs:
+                      if key in ("aria-label", "title", "placeholder", "alt") and value:
+                          self.parts.append(value)
+
+          parser = VisibleCopy()
+          parser.feed(html)
+          visible = " ".join(parser.parts).lower()
+          if "workspace" in visible:
+              raise SystemExit("Forbidden visible terminology detected in index.html")
+
+          for forbidden in (
+              "Workspace settings", "Workspace identity", "Workspace collaboration",
+              "workspace policy", "workspace membership", "workspace inbox",
+              "Back to Nexus workspace", "NEXUS WORKSPACE"
+          ):
+              if forbidden.lower() in (html + css + (root / "app.js").read_text(encoding="utf-8")).lower():
+                  raise SystemExit("Forbidden legacy interface copy found: " + forbidden)
+
+          print("Static application assets, references, copy and CSS structure passed.")
+          PY
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright test dependency
+        run: npm install --no-save --no-package-lock playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start static frontend
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/nexus-http.log 2>&1 &
+          echo $! > /tmp/nexus-http.pid
+      - name: Run responsive theme smoke tests
+        run: node scripts/visual-smoke.cjs
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-visual-smoke
+          path: artifacts/visual-smoke/
+          if-no-files-found: ignore

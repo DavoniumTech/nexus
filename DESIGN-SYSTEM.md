@@ -3,12 +3,12 @@
 ## Product principles
 
 1. **Operational clarity first.** Put the next useful action, current state, and owner-facing context before decoration.
-2. **One navigation grammar.** Persistent workspace sidebar, clear section headings, familiar page actions, consistent tabs, and reusable panels.
+2. **One navigation grammar.** Persistent Nexus navigation, clear section headings, familiar page actions, consistent tabs, and reusable panels.
 3. **Dense data, calm presentation.** Tables are scannable, labels are restrained, statuses use a small semantic palette, and empty/loading/error states explain what happened.
 4. **Keyboard is a first-class path.** `Ctrl/⌘ + K` opens global search; arrow keys move through results; Enter opens the selected item; Escape closes overlays.
 5. **Permission-aware by design.** Role-scoped navigation and privileged controls reflect known access, while every server action remains independently authorised by the existing backend.
 6. **AI has visible limits.** DVNM Intelligence is a read-only company-data experience with surfaced usage and consent controls, not a floating unrestricted bot.
-7. **Mobile is a real workspace.** Tables and navigation adapt to narrow screens; controls remain touch-sized and overlays stay contained.
+7. **Mobile is a real Nexus.** Tables and navigation adapt to narrow screens; controls remain touch-sized and overlays stay contained.
 
 ## Visual language
 
@@ -24,7 +24,7 @@
 ## Interaction patterns
 
 - Reusable page headers, actions, metric cards, panels, status pills, table shells, activity rows, property grids, and modal forms.
-- Command palette supports keyboard selection and direct navigation to workspace sections and actions.
+- Command palette supports keyboard selection and direct navigation to Nexus sections and actions.
 - Data-heavy areas separate portfolio, metrics, definitions, integrations, history, releases and review into tabs instead of one overloaded grid.
 - Destructive operations are confirmed; private downloads use short-lived signed URLs; archive actions preserve backend history.
 - `:focus-visible` provides keyboard focus, and reduced-motion preferences disable non-essential motion.
@@ -39,3 +39,22 @@ The patterns were reviewed from current product documentation and interface exam
 - [Stripe dashboard design case study](https://www.tylerberg.co/dashboard-page-templates): consistent data patterns and responsive table presentation.
 - [Vercel dashboard tour](https://blog.vercel.com/academy/optimize-your-vercel-account/tour-the-dashboard) and [logs](https://vercel.com/docs/logs): separated team controls, operational signals, filters and incident investigation.
 - [Notion table views](https://www.notion.com/help/tables): structured records with sortable/filterable views and row-level actions as a useful database mental model.
+
+
+## Enterprise readability and adaptive layout
+
+- Standard body copy starts at 16px; standard table content is 14px or larger.
+- Page titles scale fluidly and remain readable on narrow screens.
+- Dark, light and system appearance are supported through semantic theme variables. System mode follows the device colour preference.
+- Nexus Overview is an executive signal page. Each metric is derived from successful live endpoint responses; unavailable sources remain explicitly unavailable.
+- Project progress is visualised only when saved project percentages are returned by the backend.
+- Responsive layout adapts across compact, medium and expanded viewport widths.
+- The official Davonium D-mark is loaded from the existing company website asset.
+- Accessibility refinements follow WCAG 2.2 AA principles, including 320 CSS-pixel reflow, text resizing, visible focus and reduced-motion support.
+
+
+## Visual QA coverage
+
+The automated Chromium smoke test evaluates the sign-in shell at 320, 360, 390, 768, 1024, 1280 and 1440 CSS pixels in explicit Dark and Light modes, plus System mode following both light and dark device preferences. It checks visible copy, overflow, logo loading and the 16px body/input text floor. A separate simulated signed-in overview render uses isolated Edge Function fixtures to verify the live-data presentation logic and desktop/mobile layout without contacting Supabase. Screenshots are retained as a workflow artifact for visual inspection.
+
+The product metric-history view plots saved observations by metric key and unit, includes point-level date/value tooltips and min/max range context, and retains the exact observation table. It does not blend incomparable metric series or invent missing points.
