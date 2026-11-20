@@ -191,7 +191,7 @@
 
   // NEXUS OVERVIEW — executive signals built only from successfully returned records.
   async function renderOverview(){
-    const [ccR,orgR,anR,prR,ntR,monR,productsR,objectivesR,integrationsR]=await Promise.all([
+    const [ccR,orgR,anR,prR,ntR,monR,productsR,objectivesR,integrationsR,membersR,clientsR]=await Promise.all([
       safe(api("command","overview")),
       safe(api("workspace","overview")),
       safe(api("analytics","overview")),
@@ -200,7 +200,9 @@
       safe(api("monitor","status")),
       safe(api("analytics","products")),
       safe(api("command","objectives.list")),
-      safe(api("monitor","integrations.list"))
+      safe(api("monitor","integrations.list")),
+      safe(api("workspace","members")),
+      safe(api("workspace","client_accounts"))
     ]);
     const cc=ccR.ok?(unwrap(ccR.data)||{}):{};
     const org=orgR.ok?(unwrap(orgR.data)||{}):{};
@@ -213,6 +215,8 @@
     const products=productsR.ok?records(productsR.data,"products"):null;
     const objectives=objectivesR.ok?records(objectivesR.data,"objectives"):null;
     const integrations=integrationsR.ok?records(integrationsR.data,"integrations"):null;
+    const members=membersR.ok?records(membersR.data,"members"):null;
+    const clients=clientsR.ok?records(clientsR.data,"client_accounts"):null;
     const totalProjects=projects===null?null:projects.length;
     const activeProjects=projects===null?null:projects.filter(p=>String(p.status||"").toLowerCase()==="active").length;
     const openTasks=tasks===null?null:tasks.filter(t=>!(/done|completed|cancelled/i.test(t.status||""))).length;
@@ -225,16 +229,20 @@
     const unread=notifications===null?null:notifications.filter(n=>!n.read_at).length;
     const healthyServices=services===null?null:services.filter(x=>safeStatus(x.status||x.component_status)==="good").length;
     const openIncidents=incidents===null?null:incidents.length;
+    const memberCount=members===null?null:members.length;
+    const clientCount=clients===null?null:clients.length;
     const accessibleProjects=org.counts?.accessible_projects??totalProjects;
     const headerActions='<button class="btn btn-secondary" data-act="refresh">'+icon("refresh")+' Refresh</button><button class="btn btn-primary" data-act="create-project">'+icon("plus")+' New project</button>';
     const hour=new Date().getHours(),greeting=hour<12?"morning":hour<18?"afternoon":"evening";
     let html=pageHead("overview",headerActions,"Good "+greeting+". Your company operations, at a glance.");
-    const failed=[ccR,orgR,anR,prR,ntR,monR,productsR,objectivesR,integrationsR].filter(x=>!x.ok);
+    const failed=[ccR,orgR,anR,prR,ntR,monR,productsR,objectivesR,integrationsR,membersR,clientsR].filter(x=>!x.ok);
     if(failed.length)html+='<div class="info-banner">◈ <span>'+failed.length+' Nexus data source(s) could not be loaded. Unavailable values are shown as a dash, not as zero.</span></div>';
     html+='<section class="panel hero-panel overview-hero"><div class="hero-content"><div class="hero-label">DAVONIUM NEXUS · COMPANY COMMAND</div><h2>Make the next move count.</h2><p>A live view of delivery, products, strategy and operations. Understand what is moving and where attention is needed.</p><div class="quick-actions">'+quickAction("Create a task","create-task","＋")+quickAction("Invite a teammate","invite-member","♙")+quickAction("Add a company update","create-announcement","✦")+quickAction("Ask DVNM Intelligence","go-ai","✧")+'</div></div><div class="overview-hero-mark" aria-hidden="true"><span>✦</span><b>N</b><i></i></div></section>';
     html+='<div class="grid metric-grid overview-metrics">'+
       stat("Projects",totalProjects===null?"—":fmtNum(totalProjects),activeProjects===null?"Active count unavailable":fmtNum(activeProjects)+" active","▦")+
       stat("Open tasks",openTasks===null?"—":fmtNum(openTasks),overdueTasks===null?"Overdue count unavailable":fmtNum(overdueTasks)+" overdue","✓")+
+      stat("Client accounts",clientCount===null?"—":fmtNum(clientCount),"Accounts available to your role","◉")+
+      stat("Nexus members",memberCount===null?"—":fmtNum(memberCount),"Member records available to your role","♙")+
       stat("Products",productCount===null?"—":fmtNum(productCount),"Registered company products","⬡")+
       stat("Verified metrics",verifiedMetrics===null?"—":fmtNum(verifiedMetrics),"Verified, non-sample observations","↗")+
       stat("Unread inbox",unread===null?"—":fmtNum(unread),"Personal notifications","♢")+
