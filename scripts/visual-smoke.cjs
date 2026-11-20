@@ -114,7 +114,7 @@ const themes = [
         "getSession: async () => ({ data: { session: { access_token: 'fixture-token', user: { id: 'fixture-user', email: 'owner@davoniumtech.test' } } }, error: null }),",
         "signOut: async () => ({ error: null })",
         "} }) };"
-      ].join("\\n")
+      ].join("\n")
     }));
     await overviewContext.route("https://fonts.googleapis.com/**", route => route.abort());
     await overviewContext.route("https://fonts.gstatic.com/**", route => route.abort());
@@ -183,9 +183,22 @@ const themes = [
 
     const overviewPage = await overviewContext.newPage();
     const overviewErrors = [];
+    const overviewConsoleErrors = [];
     overviewPage.on("pageerror", error => overviewErrors.push(error.message));
+    overviewPage.on("console", message => { if (message.type() === "error") overviewConsoleErrors.push(message.text()); });
     await overviewPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    await overviewPage.waitForSelector("#pageContent .overview-hero", { timeout: 15000 });
+    const reachedOverview = await overviewPage.waitForSelector("#pageContent .overview-hero", { timeout: 15000 }).then(() => true).catch(() => false);
+    if (!reachedOverview) {
+      const diagnostics = await overviewPage.evaluate(() => ({
+        supabaseClient: typeof window.supabase,
+        authVisible: !document.querySelector("#authScreen")?.classList.contains("hidden"),
+        authMessage: document.querySelector("#authMessage")?.innerText || "",
+        connection: document.querySelector("#connectionText")?.innerText || "",
+        dialog: document.querySelector('[role="dialog"]')?.innerText || "",
+        pageContent: document.querySelector("#pageContent")?.innerText?.slice(0, 800) || ""
+      }));
+      failures.push("fixture overview did not boot: " + JSON.stringify(diagnostics) + "; page errors: " + overviewErrors.join("; ") + "; console errors: " + overviewConsoleErrors.join("; "));
+    }
     const overviewState = await overviewPage.evaluate(() => ({
       title: document.querySelector("#pageCrumb")?.innerText || "",
       visibleText: document.body.innerText,
