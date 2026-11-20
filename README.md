@@ -58,3 +58,10 @@ Nexus supports **Dark**, **Light** and **System** appearance. System mode follow
 The executive overview combines live command-centre, organisation, analytics, project, notification, monitoring, product, objective and integration data. It displays unavailable values as unavailable rather than converting failed or missing data into zero.
 
 The official Davonium D-mark is loaded from the corporate asset at `https://www.davoniumtech.com/assets/images/davonium-d-icon.webp`.
+
+
+## Frontend validation
+
+GitHub Actions runs the JavaScript syntax and static asset checks, followed by a Chromium/Playwright browser smoke test. The browser test exercises the unauthenticated sign-in shell in Dark, Light and System appearance at 320, 360, 390, 768, 1024, 1280 and 1440 CSS pixels. It checks that the official Davonium mark loads, readable body and input text remain at least 16px, visible copy contains no legacy organisation terminology, and layouts do not develop horizontal overflow. Representative desktop and mobile screenshots are uploaded as the `nexus-visual-smoke` workflow artifact.
+
+The browser smoke test uses an isolated stub Supabase client because it verifies the static, signed-out shell only. It does **not** authenticate against the owner's project, invoke company data actions, or test Gemini. Those live checks must be performed using an authorised account in the deployed environment.
