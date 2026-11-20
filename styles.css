@@ -28,3 +28,47 @@
 :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
 button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* NEXUS V3 readability and DVNM Intelligence workspace */
+:root{--sidebar:276px}
+body{font-size:15px;line-height:1.58}
+.nav-item{font-size:13px;padding:10px 11px;gap:12px}
+.nav-label{font-size:10px;padding-top:18px}
+.workspace-meta b{font-size:13px}.workspace-meta small,.user-meta small{font-size:11px}.user-meta b{font-size:12px}
+.sidebar-health,.breadcrumbs{font-size:12px}
+.page-head h1,.page-head h2{font-size:28px;line-height:1.2}.page-head p{font-size:14px;line-height:1.65}
+.btn{font-size:13px;padding:11px 15px}.btn-small{font-size:12px}
+.field{font-size:13px}.field input,.field select,.field textarea,.control{font-size:14px;padding:13px 14px}
+.metric-value{font-size:29px}.data-table th{font-size:11px;padding:13px 14px}.data-table td{font-size:13px;padding:14px}
+.cell-title{font-size:14px}.cell-sub{font-size:12px}.property small{font-size:11px}.property b{font-size:14px}
+.activity-body b{font-size:13px}.activity-body p{font-size:12px}.nav-count{font-size:11px}
+.icon-button{width:38px;height:38px;font-size:18px}.icon-button.tiny{width:30px;height:30px;font-size:15px}
+.sidebar-collapsed{--sidebar:82px}.sidebar-collapsed .sidebar-brand{padding:0 22px}.sidebar-collapsed .nav-item{justify-content:center;padding:12px 8px}
+#app.ai-mode .sidebar,#app.ai-mode .topbar,#app.ai-mode .app-footer{display:none!important}
+#app.ai-mode .main-shell{margin-left:0;min-height:100vh}#app.ai-mode .main-content{padding:0;flex:1;min-height:100vh}
+#app.ai-mode #pageContent{height:100vh;min-height:100vh;padding:0}
+#pageContent:has(.ai-layout)>.page-head,#pageContent:has(.ai-layout)>.info-banner,#pageContent:has(.ai-layout)>.metric-grid,#pageContent:has(.ai-layout)>.ai-capability-grid{display:none!important}
+.ai-layout{height:100vh;min-height:620px;width:100%;grid-template-columns:286px minmax(0,1fr);border:0;border-radius:0;margin:0;box-shadow:none;background:var(--bg)}
+.ai-conversations{background:var(--surface);border-right:1px solid var(--line)}
+.ai-side-head{padding:17px 15px;align-items:flex-start}.ai-side-head b{font:700 14px Manrope}.ai-side-head small{font-size:11px}
+.ai-return-link{display:block;border:0;background:transparent;color:var(--muted);font-size:11px;padding:0 0 10px;cursor:pointer}.ai-return-link:hover{color:var(--cyan)}
+.ai-thread-list{max-height:none;padding:10px}.ai-thread{padding:11px;border-radius:10px}.ai-thread b{font-size:12px;max-width:190px}.ai-thread small{font-size:10px}
+.ai-empty-note{font-size:12px;line-height:1.6}.ai-side-foot{font-size:11px;padding:14px}
+.ai-workspace{height:100vh;min-height:620px;background:radial-gradient(ellipse at 50% 0%,rgba(108,91,220,.07),transparent 45%),var(--bg)}
+.ai-workspace-head{min-height:66px;padding:14px 26px;align-items:center;background:color-mix(in srgb,var(--bg) 90%,transparent)}
+.ai-workspace-head h2{font-size:15px;margin:0 0 4px}.ai-workspace-head p{font-size:12px}
+.ai-status{font-size:11px;padding:7px 11px}.ai-messages{max-height:none;min-height:0;flex:1;padding:28px 22px;gap:18px;scroll-behavior:smooth}
+.ai-orb{width:60px;height:60px;border-radius:20px;font-size:25px}
+.chat-welcome{max-width:720px}.chat-welcome h3{font:750 clamp(26px,3.2vw,38px)/1.18 Manrope;letter-spacing:-.045em;margin-bottom:10px}.chat-welcome p{font-size:14px;line-height:1.7}
+.ai-prompt-grid{gap:10px;margin-top:27px}.ai-prompt-grid button{padding:14px;min-height:70px;border-radius:13px;font-size:12px}
+.ai-message{max-width:min(820px,94%);padding:16px 18px;border-radius:16px;font-size:14px;line-height:1.8}
+.ai-message.user{max-width:min(76%,760px);border-radius:16px 16px 5px 16px}
+.ai-message.assistant{background:transparent;border-color:transparent;align-self:center;width:min(820px,100%);padding:14px 8px}
+.ai-message-head{font-size:11px;margin-bottom:9px}.ai-message-head b{font-size:12px}.ai-message-content{font-size:14px;line-height:1.85}
+.ai-source-tags{font-size:10px}.ai-thinking{font-size:12px;padding:10px 8px}
+.ai-composer{width:min(860px,calc(100% - 40px));margin:0 auto 10px;padding:13px 15px;border-radius:17px;background:var(--surface);border-color:var(--line-strong);box-shadow:0 10px 32px rgba(0,0,0,.15)}
+.ai-composer textarea{font:14px/1.6 'DM Sans',sans-serif;min-height:44px;padding:6px;max-height:180px}
+.ai-composer-foot{font-size:10px;padding-top:10px}.ai-limits{justify-content:center;font-size:10px;padding-bottom:12px}
+.ai-capability-grid{display:none!important}
+.light-theme .ai-workspace{background:#fbfcff}.light-theme .ai-conversations{background:#f5f7fb}.light-theme .ai-message-content{color:#20364b}
+@media(max-width:760px){#app.ai-mode .main-content{padding:0}.ai-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);height:100vh;min-height:100vh}.ai-conversations{border-right:0;border-bottom:1px solid var(--line);max-height:190px}.ai-thread-list{display:flex;gap:6px;overflow:auto;max-height:78px;padding:7px}.ai-thread-wrap{min-width:185px;max-width:230px}.ai-thread{min-width:0}.ai-workspace{height:auto;min-height:0}.ai-workspace-head{padding:12px 14px;min-height:56px}.ai-messages{padding:18px 13px;min-height:0}.chat-welcome h3{font-size:26px}.chat-welcome p{font-size:13px}.ai-prompt-grid{grid-template-columns:1fr;margin-top:18px}.ai-message{max-width:96%;font-size:14px}.ai-message.user{max-width:94%}.ai-composer{width:calc(100% - 20px);margin:0 auto 8px;padding:10px}.ai-composer-foot{align-items:center}.ai-limits{gap:7px 12px;font-size:9px}.ai-return-link{font-size:10px}}
