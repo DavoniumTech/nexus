@@ -353,7 +353,46 @@
   async function publishRelease(id){if(!confirm("Publish this release note?"))return;try{await api("command","product_releases.publish",{release_id:id});notify("Release published.","success");await refresh();}catch(e){notify(e.message,"error");}}
   function editMetricDefinition(id){const list=state.cache.products?.definitions||[];const d=list.find(x=>x.id===id);if(!d)return notify("Refresh metric definitions and try again.","error");openForm({title:"Edit metric definition",description:"Metric keys remain stable. You can update the label, unit, aggregation and active state.",fields:[{name:"metric_label",label:"Metric label",value:d.metric_label,required:true,max:120},{name:"unit",label:"Unit",value:d.unit,max:30},{name:"aggregation",label:"Aggregation",type:"select",value:d.aggregation,options:["latest","sum","average","maximum","minimum"].map(x=>[x,x])},{name:"is_active",label:"Definition active",type:"select",value:String(d.is_active),options:[["true","Active"],["false","Inactive"]]}],onSubmit:async v=>{v.is_active=v.is_active==="true";await api("analytics","update_metric_definition",{definition_id:id,...v});notify("Metric definition updated.","success");await closeModal();await refresh();}});}
   function createManualMetric(){const data=state.cache.products||{};const products=data.products||[],definitions=(data.definitions||[]).filter(x=>x.is_active);if(!products.length||!definitions.length)return notify("Add a product and an active metric definition before recording a measurement.","error");const metricOptions=definitions.map(x=>{const product=products.find(p=>p.id===x.product_id);return [`${x.product_id}::${x.metric_key}`,`${product?.name||shortId(x.product_id)} · ${x.metric_label} (${x.unit||"count"})`];});openForm({title:"Record a manual metric",description:"Manual observations are created as pending. They are excluded from verified performance metrics until an authorised reviewer verifies them.",fields:[{name:"metric_ref",label:"Product metric",type:"select",required:true,options:metricOptions},{name:"metric_value",label:"Metric value",type:"number",required:true,min:0},{name:"period_start",label:"Period start",type:"date"},{name:"period_end",label:"Period end",type:"date"},{name:"source_reference",label:"Source reference (optional)",max:300,span:2}],onSubmit:async v=>{const split=v.metric_ref.split("::");if(split.length!==2)throw new Error("Choose a valid product metric.");v.product_id=split[0];v.metric_key=split[1];delete v.metric_ref;v.metric_value=Number(v.metric_value);if(!Number.isFinite(v.metric_value)||v.metric_value<0)throw new Error("Enter a non-negative finite metric value.");if(!v.period_start)delete v.period_start;if(!v.period_end)delete v.period_end;if(!v.source_reference)delete v.source_reference;await api("analytics","create_manual_metric",v);notify("Manual metric entered as pending review.","success");await closeModal();await refresh();}});}
-  async function showMetricHistory(productId){try{const d=await api("analytics","metric_history",{product_id:productId,limit:100});const metrics=records(d,"metrics");const product=(state.cache.products?.products||[]).find(x=>x.id===productId);openModal("METRIC HISTORY",product?.name||"Verified metric history",table(["Metric","Value","Source","Verification","Observed"],metrics.map(m=>`<tr><td>${textCell(m.metric_label,m.metric_key)}</td><td>${esc(`${fmtNum(m.metric_value)} ${m.unit||""}`)}</td><td>${pill(m.source)}</td><td>${pill(m.verification)}</td><td>${fmtTime(m.observed_at)}</td></tr>`),{emptyTitle:"No verified observations",emptyCopy:"No verified non-sample metric observations were returned for this product."}));}catch(e){notify(e.message,"error");}}
+  function metricHistoryCharts(metrics){
+    const grouped=new Map();
+    metrics.forEach(item=>{
+      const value=Number(item.metric_value);
+      if(!Number.isFinite(value)||!item.metric_key||!item.observed_at)return;
+      const key=String(item.metric_key)+"|"+String(item.unit||"");
+      if(!grouped.has(key))grouped.set(key,[]);
+      grouped.get(key).push(item);
+    });
+    return Array.from(grouped.values()).map(items=>{
+      const ordered=items.slice().sort((a,b)=>new Date(a.observed_at)-new Date(b.observed_at));
+      if(ordered.length<2)return "";
+      const values=ordered.map(item=>Number(item.metric_value));
+      const min=Math.min.apply(null,values);
+      const max=Math.max.apply(null,values);
+      const range=max-min||Math.max(Math.abs(max)*.08,1);
+      const points=values.map((value,index)=>{
+        const x=18+(index/(values.length-1))*644;
+        const y=116-((value-min)/range)*88;
+        return {x:Number(x.toFixed(2)),y:Number(y.toFixed(2)),value};
+      });
+      const path=points.map((point,index)=>(index?"L ":"M ")+point.x+" "+point.y).join(" ");
+      const dots=points.map(point=>'<circle cx="'+point.x+'" cy="'+point.y+'" r="3.5" fill="var(--cyan)" stroke="var(--surface)" stroke-width="2"/>').join("");
+      const first=ordered[0],last=ordered[ordered.length-1];
+      const title=first.metric_label||first.metric_key;
+      return '<section class="metric-history-chart"><div class="metric-history-head"><div><h3>'+esc(title)+'</h3><p>'+esc(first.unit||"Recorded value")+' · '+ordered.length+' saved observations</p></div><strong>'+esc(fmtNum(last.metric_value))+' '+esc(last.unit||"")+'</strong></div><svg viewBox="0 0 680 140" role="img" aria-label="'+esc(title)+' time series with '+ordered.length+' recorded observations"><path d="M 18 116 H 662 M 18 72 H 662 M 18 28 H 662" fill="none" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="4 6"/><path d="'+path+'" fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg><div class="metric-history-axis"><span>'+fmtDate(first.observed_at)+'</span><span>'+fmtDate(last.observed_at)+'</span></div></section>';
+    }).join("");
+  }
+  async function showMetricHistory(productId){
+    try{
+      const response=await api("analytics","metric_history",{product_id:productId,limit:100});
+      const metrics=records(response,"metrics");
+      const product=(state.cache.products?.products||[]).find(item=>item.id===productId);
+      const charts=metricHistoryCharts(metrics);
+      const rows=metrics.map(item=>'<tr><td>'+textCell(item.metric_label,item.metric_key)+'</td><td>'+esc(fmtNum(item.metric_value)+' '+(item.unit||""))+'</td><td>'+pill(item.source)+'</td><td>'+pill(item.verification)+'</td><td>'+fmtTime(item.observed_at)+'</td></tr>');
+      const tableHtml=table(["Metric","Value","Source","Verification","Observed"],rows,{emptyTitle:"No observations returned",emptyCopy:"The history service returned no metric observations for this product."});
+      const note=metrics.length?'<p class="metric-history-disclosure">Each line represents one metric key and unit. Only saved observations returned by Nexus are plotted; unlike metrics are never combined.</p>':"";
+      openModal("METRIC HISTORY",product?.name||"Verified metric history",(charts||"")+note+tableHtml);
+    }catch(error){notify(error.message,"error");}
+  }
 
   async function verifyMetric(id){if(!confirm("Verify this manual metric? This action is recorded in the audit trail."))return;try{await api("analytics","verify_manual_metric",{metric_id:id});notify("Metric verified.","success");await refresh();}catch(e){notify(e.message,"error");}}
 
