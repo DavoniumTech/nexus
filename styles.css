@@ -424,3 +424,20 @@ body{font-size:16px;line-height:1.6;letter-spacing:0}
   font-variant-numeric:tabular-nums;
 }
 .metric-history-range span:last-child{text-align:right}
+
+
+/* Final sign-in typography and light-gradient contrast */
+.secure-mark{font-size:12px;line-height:1.35;padding:7px 9px}
+.auth-links .link-button{font-size:13px;min-height:34px}
+.auth-foot{font-size:13px;line-height:1.5}
+.auth-card .field-note{font-size:13px;line-height:1.5}
+.auth-proof span{font-size:13px;line-height:1.4}
+.auth-bottom span{font-size:13px;letter-spacing:.08em}
+.light-theme .auth-story h1 span{
+  background:linear-gradient(92deg,#147b9c 0%,#2868bf 52%,#465ac0 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.light-theme .auth-foot{color:#58738a}
+.light-theme .auth-bottom{color:#58738a}
