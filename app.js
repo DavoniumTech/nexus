@@ -375,10 +375,14 @@
         return {x:Number(x.toFixed(2)),y:Number(y.toFixed(2)),value};
       });
       const path=points.map((point,index)=>(index?"L ":"M ")+point.x+" "+point.y).join(" ");
-      const dots=points.map(point=>'<circle cx="'+point.x+'" cy="'+point.y+'" r="3.5" fill="var(--cyan)" stroke="var(--surface)" stroke-width="2"/>').join("");
+      const dots=points.map((point,index)=>{
+        const observation=ordered[index];
+        const detail=fmtDate(observation.observed_at)+" · "+fmtNum(observation.metric_value)+" "+(observation.unit||"");
+        return '<circle cx="'+point.x+'" cy="'+point.y+'" r="3.5" fill="var(--cyan)" stroke="var(--surface)" stroke-width="2"><title>'+esc(detail)+'</title></circle>';
+      }).join("");
       const first=ordered[0],last=ordered[ordered.length-1];
       const title=first.metric_label||first.metric_key;
-      return '<section class="metric-history-chart"><div class="metric-history-head"><div><h3>'+esc(title)+'</h3><p>'+esc(first.unit||"Recorded value")+' · '+ordered.length+' saved observations</p></div><strong>'+esc(fmtNum(last.metric_value))+' '+esc(last.unit||"")+'</strong></div><svg viewBox="0 0 680 140" role="img" aria-label="'+esc(title)+' time series with '+ordered.length+' recorded observations"><path d="M 18 116 H 662 M 18 72 H 662 M 18 28 H 662" fill="none" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="4 6"/><path d="'+path+'" fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg><div class="metric-history-axis"><span>'+fmtDate(first.observed_at)+'</span><span>'+fmtDate(last.observed_at)+'</span></div></section>';
+      return '<section class="metric-history-chart"><div class="metric-history-head"><div><h3>'+esc(title)+'</h3><p>'+esc(first.unit||"Recorded value")+' · '+ordered.length+' saved observations</p></div><strong>'+esc(fmtNum(last.metric_value))+' '+esc(last.unit||"")+'</strong></div><div class="metric-history-range"><span>Low · '+esc(fmtNum(min))+'</span><span>High · '+esc(fmtNum(max))+'</span></div><svg viewBox="0 0 680 140" role="img" aria-label="'+esc(title)+' time series with '+ordered.length+' recorded observations. Low '+esc(fmtNum(min))+'; high '+esc(fmtNum(max))+'"><path d="M 18 116 H 662 M 18 72 H 662 M 18 28 H 662" fill="none" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="4 6"/><path d="'+path+'" fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg><div class="metric-history-axis"><span>'+fmtDate(first.observed_at)+'</span><span>'+fmtDate(last.observed_at)+'</span></div></section>';
     }).join("");
   }
   async function showMetricHistory(productId){
