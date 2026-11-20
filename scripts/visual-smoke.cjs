@@ -93,6 +93,130 @@ const themes = [
       }
       await context.close();
     }
+
+    // Authenticated Overview fixture: requests go through the real frontend Edge Function layer,
+    // but every response is a local test fixture. This never reaches the live Supabase project.
+    const overviewContext = await browser.newContext({
+      colorScheme: "dark",
+      viewport: { width: 1440, height: 1000 },
+      deviceScaleFactor: 1
+    });
+    await overviewContext.addInitScript(() => {
+      localStorage.setItem("nexus_theme", "dark");
+      localStorage.setItem("nexus_publishable_key", "visual-overview-fixture-key");
+    });
+    await overviewContext.route("**/supabase-js@2", route => route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: [
+        "window.supabase = { createClient: () => ({ auth: {",
+        "onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),",
+        "getSession: async () => ({ data: { session: { access_token: 'fixture-token', user: { id: 'fixture-user', email: 'owner@davoniumtech.test' } } }, error: null }),",
+        "signOut: async () => ({ error: null })",
+        "} }) };"
+      ].join("\\n")
+    }));
+    await overviewContext.route("https://fonts.googleapis.com/**", route => route.abort());
+    await overviewContext.route("https://fonts.gstatic.com/**", route => route.abort());
+    await overviewContext.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
+      const endpoint = new URL(route.request().url()).pathname.split("/").pop();
+      const requestBody = route.request().postDataJSON() || {};
+      const notifications = [
+        { id: "notice-1", title: "Nexus visual QA", body: "Fixture notification", created_at: "2026-11-20T08:00:00Z", read_at: null }
+      ];
+      let payload;
+      if (endpoint === "nexus-session") {
+        payload = {
+          identity: { display_name: "Davonium Owner" },
+          workspaces: [{ id: "fixture-org", slug: "davonium-technologies", name: "Davonium Technologies", role: "owner" }]
+        };
+      } else if (endpoint === "bright-task") {
+        payload = { permissions: [] };
+      } else if (endpoint === "nexus-command-center" && requestBody.action === "overview") {
+        payload = { data: {
+          tasks: [
+            { id: "task-1", status: "in_progress", due_at: "2026-12-02T00:00:00Z" },
+            { id: "task-2", status: "completed", due_at: "2026-11-10T00:00:00Z" }
+          ],
+          open_incidents: [{ id: "incident-1", title: "Fixture integration check", status: "investigating", started_at: "2026-11-20T07:00:00Z" }]
+        }};
+      } else if (endpoint === "nexus-command-center" && requestBody.action === "objectives.list") {
+        payload = { data: { objectives: [{ id: "objective-1", title: "Deliver Nexus", objective_status: "active", progress_percent: 42 }] } };
+      } else if (endpoint === "nexus-workspace" && requestBody.action === "overview") {
+        payload = { data: { counts: { accessible_projects: 2 } } };
+      } else if (endpoint === "nexus-workspace" && requestBody.action === "members") {
+        payload = { data: { members: [
+          { id: "m1", status: "active" }, { id: "m2", status: "active" },
+          { id: "m3", status: "active" }, { id: "m4", status: "invited" }
+        ] } };
+      } else if (endpoint === "nexus-workspace" && requestBody.action === "client_accounts") {
+        payload = { data: { client_accounts: [
+          { id: "c1", status: "active" }, { id: "c2", status: "active" }, { id: "c3", status: "active" }
+        ] } };
+      } else if (endpoint === "nexus-analytics" && requestBody.action === "overview") {
+        payload = { data: { counts: { products: 2, verified_non_sample_metrics: 9 } } };
+      } else if (endpoint === "nexus-analytics" && requestBody.action === "products") {
+        payload = { data: { products: [
+          { id: "product-1", name: "Davonium Nexus", status: "development", current_version: "0.1" },
+          { id: "product-2", name: "Marvel Chat", status: "development", current_version: "0.1" }
+        ] } };
+      } else if (endpoint === "nexus-projects" && requestBody.action === "list_projects") {
+        payload = { data: { projects: [
+          { id: "project-1", name: "Nexus OS", status: "active", progress_percent: 72, target_date: "2026-12-18" },
+          { id: "project-2", name: "Portal integration", status: "planning", progress_percent: 28, target_date: "2027-01-15" }
+        ] } };
+      } else if (endpoint === "nexus-notifications") {
+        payload = { data: { notifications } };
+      } else if (endpoint === "nexus-monitor" && requestBody.action === "status") {
+        payload = { data: { services: [{ display_name: "Nexus API", status: "operational", last_checked_at: "2026-11-20T08:00:00Z" }] } };
+      } else if (endpoint === "nexus-monitor" && requestBody.action === "integrations.list") {
+        payload = { data: { integrations: [{ id: "integration-1", display_name: "Metrics feed", state: "active", last_test_status: "passed" }] } };
+      } else {
+        payload = { data: {} };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(payload)
+      });
+    });
+
+    const overviewPage = await overviewContext.newPage();
+    const overviewErrors = [];
+    overviewPage.on("pageerror", error => overviewErrors.push(error.message));
+    await overviewPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await overviewPage.waitForSelector("#pageContent .overview-hero", { timeout: 15000 });
+    const overviewState = await overviewPage.evaluate(() => ({
+      title: document.querySelector("#pageCrumb")?.innerText || "",
+      visibleText: document.body.innerText,
+      cards: [...document.querySelectorAll(".overview-metrics .metric-card")].map(card => ({
+        label: card.querySelector(".metric-top span")?.innerText || "",
+        value: card.querySelector(".metric-value")?.innerText || ""
+      })),
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    }));
+    const cardMap = Object.fromEntries(overviewState.cards.map(card => [card.label, card.value]));
+    if (overviewState.title !== "Nexus Overview") failures.push("fixture overview: page title is not Nexus Overview");
+    if (cardMap["Client accounts"] !== "3") failures.push("fixture overview: expected 3 returned client accounts");
+    if (cardMap["Nexus members"] !== "4") failures.push("fixture overview: expected 4 returned member records");
+    if (cardMap["Projects"] !== "2") failures.push("fixture overview: expected 2 returned projects");
+    if (cardMap["Verified metrics"] !== "9") failures.push("fixture overview: expected 9 returned verified metrics");
+    if (!overviewState.visibleText.includes("Project delivery") || !overviewState.visibleText.includes("Strategic priorities")) failures.push("fixture overview: key executive panels did not render");
+    if (/workspace/i.test(overviewState.visibleText)) failures.push("fixture overview: forbidden visible terminology detected");
+    if (overviewState.scrollWidth > overviewState.clientWidth + 1) failures.push("fixture overview: desktop layout has horizontal overflow");
+    if (overviewErrors.length) failures.push("fixture overview: JavaScript page errors: " + overviewErrors.join("; "));
+    await overviewPage.screenshot({ path: path.join(outputDir, "overview-desktop.png"), fullPage: true });
+    await overviewPage.setViewportSize({ width: 390, height: 844 });
+    await overviewPage.waitForTimeout(150);
+    const mobileOverview = await overviewPage.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    }));
+    if (mobileOverview.scrollWidth > mobileOverview.clientWidth + 1) failures.push("fixture overview: mobile layout has horizontal overflow");
+    await overviewPage.screenshot({ path: path.join(outputDir, "overview-mobile.png"), fullPage: true });
+    await overviewContext.close();
+
   } finally {
     await browser.close();
   }
