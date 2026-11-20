@@ -51,3 +51,10 @@ The patterns were reviewed from current product documentation and interface exam
 - Responsive layout adapts across compact, medium and expanded viewport widths.
 - The official Davonium D-mark is loaded from the existing company website asset.
 - Accessibility refinements follow WCAG 2.2 AA principles, including 320 CSS-pixel reflow, text resizing, visible focus and reduced-motion support.
+
+
+## Visual QA coverage
+
+The automated Chromium smoke test evaluates the sign-in shell at 320, 360, 390, 768, 1024, 1280 and 1440 CSS pixels in explicit Dark and Light modes, plus System mode following both light and dark device preferences. It checks visible copy, overflow, logo loading and the 16px body/input text floor. Screenshots are retained as a workflow artifact for visual inspection.
+
+The product metric-history view plots saved observations by metric key and unit, includes point-level date/value tooltips and min/max range context, and retains the exact observation table. It does not blend incomparable metric series or invent missing points.
