@@ -244,3 +244,27 @@ body{font-size:16px;line-height:1.6;letter-spacing:0}
   .btn{font-size:13px;padding:9px 12px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+
+/* Bundled Davonium identity assets */
+.starfield{
+  opacity:.27;
+  background-image:url("./assets/branding/davonium-starfield.svg"),
+    radial-gradient(1px 1px at 8% 12%,#9bdcff 80%,transparent),
+    radial-gradient(1px 1px at 22% 71%,#65cfff 80%,transparent),
+    radial-gradient(1.4px 1.4px at 61% 18%,#d7f5ff 80%,transparent),
+    radial-gradient(1px 1px at 84% 63%,#65d8ff 80%,transparent),
+    radial-gradient(1px 1px at 95% 22%,#8b9fff 80%,transparent);
+  background-size:cover,530px 420px,530px 420px,530px 420px,530px 420px,530px 420px;
+  background-position:center,0 0,0 0,0 0,0 0,0 0;
+  background-repeat:no-repeat,repeat,repeat,repeat,repeat,repeat;
+}
+.nexus-product-mark{
+  display:inline-block;
+  width:14px;
+  height:14px;
+  object-fit:contain;
+  vertical-align:-2px;
+  margin-right:4px;
+  filter:drop-shadow(0 0 5px rgba(71,217,243,.18));
+}
