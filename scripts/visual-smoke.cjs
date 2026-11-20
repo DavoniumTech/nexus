@@ -82,6 +82,7 @@ const themes = [
 
         if ((theme.name === "dark" && width === 1440) ||
             (theme.name === "light" && width === 1440) ||
+            (theme.name === "light" && width === 390) ||
             (theme.name === "dark" && width === 390)) {
           await page.screenshot({
             path: path.join(outputDir, theme.name + "-" + width + ".png"),
