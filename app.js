@@ -613,7 +613,7 @@
     const errors=result.filter(x=>!x.ok);if(errors.length)html=`<div class="notice error">${errors.map(x=>esc(x.error.message)).join(" · ")}</div>`+html;$("pageContent").innerHTML=html;
   }
 
-  // CONNECTION AND PERSONAL WORKSPACE SETTINGS.
+  // CONNECTION AND PERSONAL NEXUS SETTINGS.
   function openSetup(focusAuth=false){
     const c=cfg();openForm({title:"Secure Supabase connection",description:"Connect this static frontend to your existing Davonium Nexus Supabase project. Use a publishable/anon key only. Service-role keys, Gemini keys and ledger secrets are rejected by design.",fields:[{name:"url",label:"Supabase project URL",value:c.url,required:true,type:"url",placeholder:"https://your-project.supabase.co"},{name:"key",label:"Supabase publishable / anon key",value:c.key,required:true,type:"password",max:600,span:2},{name:"remember",label:"Remember this connection in this browser",type:"checkbox",value:true,span:2}],submitLabel:"Save secure connection",onSubmit:async v=>{
       const url=v.url.trim().replace(/\/$/,"");if(!/^https:\/\/[a-z0-9.-]+\.supabase\.co$/i.test(url))throw new Error("Enter the HTTPS URL of your Supabase project.");if(v.key.length<20)throw new Error("The publishable/anon key appears too short.");
