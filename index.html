@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07111f">
+  <meta name="color-scheme" content="dark light">
   <meta name="description" content="Davonium Nexus — the operating system for Davonium Technologies.">
   <title>Davonium Nexus — Company Operating System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="icon" type="image/webp" href="https://www.davoniumtech.com/assets/images/davonium-d-icon.webp">
+  <link rel="apple-touch-icon" href="https://www.davoniumtech.com/assets/images/davonium-d-icon.webp">
   <link rel="stylesheet" href="./styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -17,17 +19,17 @@
   <div class="ambient" aria-hidden="true"><div class="ambient-glow glow-one"></div><div class="ambient-glow glow-two"></div><div class="starfield"></div></div>
 
   <section id="authScreen" class="auth-screen">
-    <div class="auth-brand"><div class="brand-mark">D<span>✦</span></div><div><strong>DAVONIUM</strong><small>TECHNOLOGIES · NEXUS OS</small></div></div>
+    <div class="auth-brand"><div class="brand-mark brand-mark-image"><img src="https://www.davoniumtech.com/assets/images/davonium-d-icon.webp" alt="Davonium Technologies logo" width="42" height="42"></div><div><strong>DAVONIUM</strong><small>TECHNOLOGIES · NEXUS OS</small></div></div>
     <div class="auth-layout">
       <div class="auth-story">
         <div class="eyebrow"><span class="eyebrow-line"></span> THE COMPANY OPERATING SYSTEM</div>
-        <h1>One workspace.<br><span>Every move forward.</span></h1>
+        <h1>Your company.<br><span>Every move forward.</span></h1>
         <p>Projects, people, clients, products, intelligence and company operations — working together in one secure environment.</p>
-        <div class="auth-orbit"><div class="orbit-ring ring-a"></div><div class="orbit-ring ring-b"></div><div class="orbit-core">D<span>✦</span></div><i class="orbit-node node-a"></i><i class="orbit-node node-b"></i><i class="orbit-node node-c"></i></div>
+        <div class="auth-orbit"><div class="orbit-ring ring-a"></div><div class="orbit-ring ring-b"></div><div class="orbit-core"><img class="orbit-logo" src="https://www.davoniumtech.com/assets/images/davonium-d-icon.webp" alt="Davonium Technologies"></div><i class="orbit-node node-a"></i><i class="orbit-node node-b"></i><i class="orbit-node node-c"></i></div>
         <div class="auth-proof"><span><b>01</b> One source of truth</span><span><b>02</b> Permission-aware</span><span><b>03</b> Intelligence with guardrails</span></div>
       </div>
       <section class="auth-card">
-        <div class="auth-card-top"><span class="eyebrow">PRIVATE COMPANY WORKSPACE</span><span class="secure-mark">◈ SECURE ACCESS</span></div>
+        <div class="auth-card-top"><span class="eyebrow">PRIVATE NEXUS ACCESS</span><span class="secure-mark">◈ SECURE ACCESS</span></div>
         <h2>Welcome back.</h2>
         <p class="muted">Sign in with your Davonium Technologies account.</p>
         <form id="authForm" class="form-stack">
@@ -46,12 +48,12 @@
   <div id="app" class="app hidden">
     <div class="mobile-scrim" id="mobileScrim"></div>
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand"><div class="brand-mark small">D<span>✦</span></div><div class="brand-word"><strong>DAVONIUM</strong><small>NEXUS</small></div><button class="icon-button sidebar-collapse" id="collapseNav" aria-label="Toggle sidebar">‹</button></div>
-      <button class="workspace-switch" id="workspaceSwitch"><span class="workspace-monogram">DT</span><span class="workspace-meta"><b id="workspaceName">Davonium Technologies</b><small>Company workspace</small></span><span class="chevron">⌄</span></button>
+      <div class="sidebar-brand"><div class="brand-mark small brand-mark-image"><img src="https://www.davoniumtech.com/assets/images/davonium-d-icon.webp" alt="" width="35" height="35"></div><div class="brand-word"><strong>DAVONIUM</strong><small>NEXUS</small></div><button class="icon-button sidebar-collapse" id="collapseNav" aria-label="Toggle sidebar">‹</button></div>
+      <button class="workspace-switch" id="workspaceSwitch"><span class="workspace-monogram">DT</span><span class="workspace-meta"><b id="workspaceName">Davonium Technologies</b><small>Company organisation</small></span><span class="chevron">⌄</span></button>
       <div class="sidebar-scroll">
         <nav class="nav-groups" id="nav">
-          <div class="nav-label">WORKSPACE</div>
-          <button class="nav-item active" data-page="overview"><span class="nav-icon" data-icon="grid"></span><span>Command centre</span><kbd>G D</kbd></button>
+          <div class="nav-label">NEXUS</div>
+          <button class="nav-item active" data-page="overview"><span class="nav-icon" data-icon="grid"></span><span>Nexus Overview</span><kbd>G D</kbd></button>
           <button class="nav-item" data-page="projects"><span class="nav-icon" data-icon="layers"></span><span>Projects</span></button>
           <button class="nav-item" data-page="tasks"><span class="nav-icon" data-icon="check-square"></span><span>Tasks</span><span class="nav-count" id="taskNavCount"></span></button>
           <button class="nav-item" data-page="clients"><span class="nav-icon" data-icon="briefcase"></span><span>Clients</span></button>
@@ -70,28 +72,28 @@
           <button class="nav-item" data-page="monitoring"><span class="nav-icon" data-icon="activity"></span><span>System health</span></button>
           <button class="nav-item" data-page="security"><span class="nav-icon" data-icon="shield"></span><span>Security & audit</span></button>
           <button class="nav-item" data-page="permissions"><span class="nav-icon" data-icon="lock"></span><span>Permissions</span></button>
-          <button class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings"></span><span>Workspace settings</span></button>
+          <button class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings"></span><span>Nexus Settings</span></button>
           <button class="nav-item" data-page="portal" hidden><span class="nav-icon">◈</span><span>My portal</span></button>
         </nav>
       </div>
       <div class="sidebar-bottom">
         <div class="sidebar-health"><span class="status-dot" id="sidebarStatusDot"></span><span id="connectionText">Connecting securely…</span><button class="icon-button tiny" id="connectionDetails" aria-label="Connection details">↗</button></div>
-        <div class="user-card"><div class="avatar" id="userAvatar">D</div><div class="user-meta"><b id="userName">Workspace member</b><small id="userRole">Member</small></div><button class="icon-button tiny" id="signOut" title="Sign out" aria-label="Sign out">⇥</button></div>
+        <div class="user-card"><div class="avatar" id="userAvatar">D</div><div class="user-meta"><b id="userName">Nexus member</b><small id="userRole">Member</small></div><button class="icon-button tiny" id="signOut" title="Sign out" aria-label="Sign out">⇥</button></div>
       </div>
     </aside>
 
     <main class="main-shell">
       <header class="topbar">
-        <div class="topbar-left"><button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button><div class="breadcrumbs"><span>Davonium Technologies</span><b>/</b><strong id="pageCrumb">Command centre</strong></div></div>
-        <div class="topbar-actions"><button class="global-search" id="openCommand"><span class="search-glyph" data-icon="search"></span><span>Search anything…</span><kbd>Ctrl K</kbd></button><button class="icon-button" id="themeToggle" title="Toggle appearance" aria-label="Toggle appearance">◐</button><button class="icon-button notification-trigger" id="topNotifications" aria-label="Open inbox">♢<i id="topNotificationDot"></i></button><span class="top-divider"></span><button class="top-avatar" id="profileButton" aria-label="Account profile">D</button></div>
+        <div class="topbar-left"><button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button><div class="breadcrumbs"><span>Davonium Technologies</span><b>/</b><strong id="pageCrumb">Nexus Overview</strong></div></div>
+        <div class="topbar-actions"><button class="global-search" id="openCommand"><span class="search-glyph" data-icon="search"></span><span>Search Nexus…</span><kbd>Ctrl K</kbd></button><button class="icon-button" id="themeToggle" title="Appearance: system. Select next theme." aria-label="Appearance: system. Select next theme.">◐</button><button class="icon-button notification-trigger" id="topNotifications" aria-label="Open inbox">♢<i id="topNotificationDot"></i></button><span class="top-divider"></span><button class="top-avatar" id="profileButton" aria-label="Account profile">D</button></div>
       </header>
       <div class="main-content" id="pageContent" aria-live="polite"><div class="loading-shell"><div class="skeleton skeleton-title"></div><div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton skeleton-panel"></div></div></div>
-      <footer class="app-footer"><span>DAVONIUM NEXUS <i>✦</i></span><span>Useful Technology, Built with Care.</span><span id="footerEnvironment">SECURE WORKSPACE</span></footer>
+      <footer class="app-footer"><span>DAVONIUM NEXUS <i>✦</i></span><span>Useful Technology, Built with Care.</span><span id="footerEnvironment">SECURE NEXUS</span></footer>
     </main>
   </div>
 
-  <div id="modalBackdrop" class="modal-backdrop hidden" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><header class="modal-head"><div><div class="eyebrow" id="modalEyebrow">NEXUS WORKSPACE</div><h2 id="modalTitle">Create new</h2><p id="modalDescription" class="muted"></p></div><button class="icon-button" id="closeModal" aria-label="Close dialog">×</button></header><div id="modalBody"></div></section></div>
-  <div id="commandBackdrop" class="command-backdrop hidden"><section class="command-palette" role="dialog" aria-modal="true" aria-label="Command search"><div class="command-input-wrap"><span data-icon="search"></span><input id="commandSearch" autocomplete="off" placeholder="Search pages, actions and workspace…"><kbd>ESC</kbd></div><div id="commandResults" class="command-results"></div><div class="command-foot"><span>↑↓ Navigate</span><span>↵ Open</span><span>Ctrl K Close</span></div></section></div>
+  <div id="modalBackdrop" class="modal-backdrop hidden" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><header class="modal-head"><div><div class="eyebrow" id="modalEyebrow">NEXUS NEXUS</div><h2 id="modalTitle">Create new</h2><p id="modalDescription" class="muted"></p></div><button class="icon-button" id="closeModal" aria-label="Close dialog">×</button></header><div id="modalBody"></div></section></div>
+  <div id="commandBackdrop" class="command-backdrop hidden"><section class="command-palette" role="dialog" aria-modal="true" aria-label="Command search"><div class="command-input-wrap"><span data-icon="search"></span><input id="commandSearch" autocomplete="off" placeholder="Search pages, actions and Nexus…"><kbd>ESC</kbd></div><div id="commandResults" class="command-results"></div><div class="command-foot"><span>↑↓ Navigate</span><span>↵ Open</span><span>Ctrl K Close</span></div></section></div>
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   <script src="./app.js"></script>
 </body>
