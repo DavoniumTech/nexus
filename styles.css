@@ -72,3 +72,175 @@ body{font-size:15px;line-height:1.58}
 .ai-capability-grid{display:none!important}
 .light-theme .ai-workspace{background:#fbfcff}.light-theme .ai-conversations{background:#f5f7fb}.light-theme .ai-message-content{color:#20364b}
 @media(max-width:760px){#app.ai-mode .main-content{padding:0}.ai-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);height:100vh;min-height:100vh}.ai-conversations{border-right:0;border-bottom:1px solid var(--line);max-height:190px}.ai-thread-list{display:flex;gap:6px;overflow:auto;max-height:78px;padding:7px}.ai-thread-wrap{min-width:185px;max-width:230px}.ai-thread{min-width:0}.ai-workspace{height:auto;min-height:0}.ai-workspace-head{padding:12px 14px;min-height:56px}.ai-messages{padding:18px 13px;min-height:0}.chat-welcome h3{font-size:26px}.chat-welcome p{font-size:13px}.ai-prompt-grid{grid-template-columns:1fr;margin-top:18px}.ai-message{max-width:96%;font-size:14px}.ai-message.user{max-width:94%}.ai-composer{width:calc(100% - 20px);margin:0 auto 8px;padding:10px}.ai-composer-foot{align-items:center}.ai-limits{gap:7px 12px;font-size:9px}.ai-return-link{font-size:10px}}
+
+
+/* DAVONIUM NEXUS — enterprise readability, adaptive shell and theme refinements */
+:root{
+  --sidebar:282px;
+  --focus-ring:0 0 0 3px rgba(71,217,243,.23);
+  --panel-radius:20px;
+  --content-max:1680px;
+}
+html{scroll-behavior:smooth;text-size-adjust:100%;-webkit-text-size-adjust:100%}
+body{font-size:16px;line-height:1.6;letter-spacing:0}
+.main-content{width:100%;max-width:var(--content-max);margin-inline:auto;padding:30px clamp(20px,2.4vw,42px) 36px}
+.page-head{align-items:flex-end;gap:24px;margin-bottom:26px}
+.page-head h1{font-size:clamp(30px,2.5vw,38px);line-height:1.14;letter-spacing:-.04em}
+.page-head p{font-size:15px;line-height:1.65;max-width:780px}
+.head-overline,.eyebrow{font-size:11px}
+.nav-label{font-size:11px;letter-spacing:.16em}
+.nav-item{font-size:14px;min-height:44px;padding:11px 12px;gap:12px}
+.nav-item kbd{font-size:11px}
+.workspace-meta b{font-size:14px}
+.workspace-meta small,.user-meta small{font-size:12px}
+.user-meta b{font-size:13px}
+.sidebar-health,.breadcrumbs{font-size:13px}
+.global-search{min-height:42px}
+.metric-grid{gap:14px}
+.metric-card{padding:19px 20px 17px;border-radius:18px}
+.metric-top{font-size:14px;color:var(--text-2);font-weight:600}
+.metric-symbol{width:32px;height:32px;font-size:15px}
+.metric-value{font-size:clamp(27px,2vw,35px);line-height:1.12;margin:13px 0 5px}
+.metric-foot{font-size:13px;line-height:1.45;color:var(--muted)}
+.panel{padding:21px;border-radius:20px}
+.panel-head{margin-bottom:17px}
+.panel-head h3{font-size:18px;line-height:1.3}
+.panel-head p{font-size:14px;line-height:1.55}
+.panel-link{font-size:13px}
+.section-title{margin:28px 0 15px}
+.section-title h2{font-size:20px}
+.section-title p,.section-title .subtle{font-size:13px}
+.hero-panel{min-height:220px;border-radius:23px;padding:28px}
+.hero-content h2{font-size:clamp(24px,2.4vw,32px);line-height:1.18}
+.hero-content p{font-size:15px;line-height:1.7}
+.hero-label{font-size:12px}
+.quick-action{font-size:14px;min-height:44px;padding:10px 13px}
+.btn{font-size:14px;min-height:42px;padding:10px 16px}
+.btn-small{font-size:13px;min-height:36px;padding:8px 12px}
+.icon-button{width:42px;height:42px;font-size:19px}
+.icon-button.tiny{width:34px;height:34px;font-size:16px}
+.field{font-size:14px;gap:9px}
+.field input,.field select,.field textarea,.control{font-size:16px;min-height:44px;padding:12px 14px}
+.field-note{font-size:13px;line-height:1.5}
+.data-table-wrap{border-radius:14px}
+.data-table th{font-size:12px;padding:14px 15px;letter-spacing:.07em}
+.data-table td{font-size:14px;line-height:1.5;padding:14px 15px}
+.cell-title{font-size:15px;line-height:1.35}
+.cell-sub{font-size:13px;line-height:1.4}
+.cell-mono{font-size:12px}
+.table-empty{font-size:14px;padding:34px 18px}
+.empty-title{font-size:16px}
+.empty-copy{font-size:14px;line-height:1.6}
+.status-pill{font-size:12px;padding:5px 9px}
+.toolbar .control{font-size:14px;height:43px;min-height:43px;padding:8px 12px}
+.tab-button{font-size:14px;padding:11px 13px}
+.property{padding:14px}
+.property small{font-size:13px;line-height:1.4}
+.property b{font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+.activity-body b{font-size:14px}
+.activity-body p{font-size:13px;line-height:1.5}
+.activity-time{font-size:12px}
+.capability-list>div{font-size:14px;padding:12px 0}
+.permission-row b{font-size:14px}
+.permission-row small{font-size:13px}
+.check-field{font-size:14px}
+.form-error{font-size:13px}
+.modal{border-radius:22px;padding:26px}
+.modal-head h2{font-size:25px}
+.modal-head .muted{font-size:14px}
+.command-input-wrap input{font-size:16px}
+.command-result b{font-size:15px}
+.command-result small{font-size:13px}
+.command-foot{font-size:12px}
+.toast{font-size:14px}
+.app-footer{font-size:12px}
+.auth-card{padding:clamp(26px,3vw,38px)}
+.auth-card h2{font-size:32px}
+.auth-card>p{font-size:15px}
+.auth-story>p{font-size:17px}
+.auth-proof{font-size:13px}
+.auth-brand strong,.brand-word strong{font-size:14px}
+.auth-brand small,.brand-word small{font-size:10px}
+.brand-mark-image{padding:0;background:transparent;overflow:hidden;border-color:rgba(92,208,242,.3)}
+.brand-mark-image img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
+.orbit-core{overflow:hidden;padding:7px}
+.orbit-core .orbit-logo{width:100%;height:100%;object-fit:contain;border-radius:13px}
+.ai-side-head b{font-size:15px}
+.ai-side-head small{font-size:13px}
+.ai-thread b{font-size:14px}
+.ai-thread small{font-size:12px}
+.ai-return-link{font-size:13px}
+.ai-workspace-head h2{font-size:clamp(19px,2vw,25px)}
+.ai-workspace-head p{font-size:14px}
+.ai-status{font-size:13px}
+.ai-messages{font-size:15px}
+.chat-welcome p{font-size:15px;line-height:1.7}
+.ai-prompt-grid button{font-size:14px;min-height:74px;padding:16px}
+.ai-message{font-size:15px;line-height:1.8}
+.ai-message-head,.ai-message-head b{font-size:13px}
+.ai-message-content{font-size:15px;line-height:1.8}
+.ai-source-tags{font-size:12px}
+.ai-thinking{font-size:14px}
+.ai-composer textarea{font-size:16px;line-height:1.6}
+.ai-composer-foot{font-size:12px}
+.ai-limits{font-size:12px}
+.overview-hero{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.overview-hero .hero-content{max-width:760px}
+.overview-hero-mark{width:150px;height:150px;flex:0 0 150px;position:relative;display:grid;place-items:center;border:1px solid rgba(71,217,243,.22);border-radius:38px;background:radial-gradient(circle at 50% 45%,rgba(71,217,243,.17),rgba(17,44,69,.45) 62%,transparent 75%);box-shadow:0 0 50px rgba(39,181,221,.12),inset 0 0 35px rgba(71,217,243,.08)}
+.overview-hero-mark:before,.overview-hero-mark:after{content:"";position:absolute;inset:13px;border:1px solid rgba(71,217,243,.18);border-radius:30px;transform:rotate(22deg)}
+.overview-hero-mark:after{inset:26px;border-color:rgba(156,131,255,.18);transform:rotate(-22deg)}
+.overview-hero-mark b{font:800 76px/1 Manrope,sans-serif;color:#e8fbff;text-shadow:0 0 28px rgba(71,217,243,.45);z-index:1}
+.overview-hero-mark span{position:absolute;right:25px;top:18px;color:var(--cyan);font-size:20px;text-shadow:0 0 15px var(--cyan)}
+.overview-hero-mark i{position:absolute;left:20px;bottom:23px;width:6px;height:6px;background:var(--cyan);border-radius:50%;box-shadow:0 0 18px 5px rgba(71,217,243,.35)}
+.overview-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+.overview-grid{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+.overview-grid>div{display:grid;align-content:start;gap:16px;min-width:0}
+.overview-progress-row{padding:10px 0;border-bottom:1px solid var(--line)}
+.overview-progress-row:last-child{border-bottom:0}
+.overview-progress-label{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:14px}
+.overview-progress-label b{font-weight:650;color:var(--text)}
+.overview-progress-label span{color:var(--text-2);font-variant-numeric:tabular-nums}
+.overview-progress-track{height:9px;background:var(--surface-3);border-radius:20px;overflow:hidden}
+.overview-progress-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cyan-2),var(--blue));box-shadow:0 0 14px rgba(71,217,243,.24)}
+.overview-property-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.light-theme .overview-hero{background:linear-gradient(110deg,#e5f7fc,#eff4ff 62%,#f8fbff)}
+.light-theme .overview-hero-mark{background:radial-gradient(circle at 50% 45%,rgba(20,169,205,.16),rgba(222,239,248,.6) 62%,transparent 75%)}
+.light-theme .overview-hero-mark b{color:#16405a;text-shadow:0 0 22px rgba(33,172,207,.22)}
+.light-theme .overview-progress-track{background:#dbe8ef}
+@media(min-width:1500px){
+  .overview-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .overview-grid{grid-template-columns:minmax(0,1.4fr) minmax(420px,1fr)}
+}
+@media(max-width:1100px){
+  .overview-grid{grid-template-columns:1fr}
+  .overview-property-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .main-content{padding:21px 15px 28px}
+  .page-head h1{font-size:30px}
+  .page-head p{font-size:15px}
+  .overview-hero{align-items:flex-start}
+  .overview-hero-mark{width:74px;height:74px;flex-basis:74px;border-radius:22px}
+  .overview-hero-mark b{font-size:39px}
+  .overview-hero-mark:before{inset:7px;border-radius:17px}
+  .overview-hero-mark:after{inset:13px;border-radius:13px}
+  .overview-hero-mark span{right:12px;top:8px;font-size:13px}
+  .overview-hero-mark i{left:10px;bottom:11px}
+  .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .overview-property-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .metric-top{font-size:13px}
+  .metric-foot{font-size:12px}
+  .panel{padding:17px}
+  .data-table{min-width:590px}
+}
+@media(max-width:420px){
+  .overview-hero-mark{display:none}
+  .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .metric-card{padding:14px}
+  .metric-value{font-size:25px}
+  .overview-property-grid{grid-template-columns:1fr}
+  .hero-panel{padding:19px}
+  .page-head h1{font-size:28px}
+  .btn{font-size:13px;padding:9px 12px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
