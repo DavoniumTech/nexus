@@ -268,3 +268,64 @@ body{font-size:16px;line-height:1.6;letter-spacing:0}
   margin-right:4px;
   filter:drop-shadow(0 0 5px rgba(71,217,243,.18));
 }
+
+
+/* Product analytics: metric-specific historical time series */
+.metric-history-chart{
+  padding:18px 20px 14px;
+  margin:0 0 14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface-2);
+  min-width:0;
+}
+.metric-history-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.metric-history-head h3{
+  margin:0 0 4px;
+  color:var(--text);
+  font:700 17px/1.35 Manrope,sans-serif;
+}
+.metric-history-head p{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+}
+.metric-history-head strong{
+  color:var(--text);
+  font-size:16px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.metric-history-chart svg{
+  display:block;
+  width:100%;
+  height:auto;
+  margin:13px 0 5px;
+  overflow:visible;
+}
+.metric-history-axis{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  color:var(--muted);
+  font-size:12px;
+}
+.metric-history-disclosure{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.55;
+  margin:8px 0 14px;
+}
+.light-theme .metric-history-chart{background:#f7fafc;border-color:rgba(37,77,108,.16)}
+@media(max-width:560px){
+  .metric-history-chart{padding:14px}
+  .metric-history-head h3{font-size:15px}
+  .metric-history-head p{font-size:12px}
+  .metric-history-head strong{font-size:14px}
+  .metric-history-axis{font-size:11px}
+}
