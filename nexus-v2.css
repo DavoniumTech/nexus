@@ -1,0 +1,193 @@
+/* DAVONIUM NEXUS BETA V2 — typography, responsive shell and AI workspace */
+:root{
+  --sidebar:280px;
+  --font-ui:15px;
+  --font-small:13px;
+}
+html,body{font-size:15px}
+body{line-height:1.58}
+.sidebar{width:var(--sidebar);padding-bottom:12px}
+.sidebar-brand{min-height:66px;padding:0 19px}
+.brand-mark{overflow:hidden;background:transparent;border:0;box-shadow:none;border-radius:0}
+.brand-mark img{display:block;width:100%;height:100%;object-fit:contain}
+.brand-mark.small{width:38px;height:38px}
+.auth-brand .brand-mark{width:54px;height:54px}
+.auth-brand .brand-mark img{width:54px;height:54px}
+.brand-word strong,.auth-brand strong{font-size:14px;letter-spacing:.14em}
+.brand-word small,.auth-brand small{font-size:10px;letter-spacing:.14em}
+.workspace-switch{min-height:62px;margin:5px 12px 16px;padding:10px 12px;border-radius:13px}
+.workspace-meta b{font-size:13px}
+.workspace-meta small{font-size:11px}
+.nav-groups{padding:0 11px}
+.nav-label{font-size:11px;letter-spacing:.13em;padding:15px 11px 8px}
+.nav-item{min-height:43px;padding:9px 11px;gap:12px;border-radius:10px;font-size:14px;font-weight:550}
+.nav-icon{width:19px;height:19px}
+.nav-icon svg{width:19px;height:19px}
+.nav-item kbd,.nav-count,.ai-mini{font-size:11px}
+.sidebar-health{font-size:12px;padding:11px 14px}
+.user-card{padding:12px 14px}
+.user-meta b{font-size:13px}.user-meta small{font-size:11px}
+.topbar{height:68px;padding:0 30px}
+.breadcrumbs{font-size:13px}
+.topbar-actions{gap:11px}
+.global-search{height:39px;min-width:230px;font-size:13px}
+.icon-button{min-width:38px;min-height:38px}
+.main-content{padding:34px clamp(24px,3.3vw,52px) 44px}
+.page-head{margin-bottom:28px}
+.page-head h1{font-size:clamp(30px,3vw,38px)}
+.page-head p{font-size:15px;line-height:1.65}
+.head-overline{font-size:11px}
+.btn{font-size:14px;padding:11px 16px}
+.btn-small{font-size:12px}
+.metric-card{padding:20px 21px}
+.metric-top{font-size:12px}
+.metric-value{font-size:32px}
+.metric-foot{font-size:12px}
+.panel{padding:22px}
+.panel-head h3{font-size:16px}
+.panel-head p,.section-title p{font-size:13px}
+.section-title h2{font-size:19px}
+.data-table th{font-size:11px;padding:13px 15px}
+.data-table td{font-size:13px;padding:14px 15px}
+.cell-title{font-size:14px}
+.cell-sub{font-size:12px}
+.status-pill{font-size:11px;padding:5px 10px}
+.toolbar .control{font-size:13px;height:42px}
+.tab-button{font-size:13px;padding:12px 14px}
+.field{font-size:14px}
+.field input,.field select,.field textarea,.control{font-size:14px;padding:13px 14px}
+.modal-form .field{font-size:13px}
+.modal-form input,.modal-form select,.modal-form textarea{font-size:14px}
+.command-result{font-size:14px;padding:12px}
+.command-group-label{font-size:11px}
+.toast{font-size:13px}
+.app-footer{font-size:11px}
+
+/* Focused DVNM Intelligence: familiar AI conversation structure, Davonium-owned styling. */
+body.intelligence-mode .sidebar{width:78px}
+body.intelligence-mode .main-shell{margin-left:78px}
+body.intelligence-mode .sidebar-brand{justify-content:center;padding:0 12px}
+body.intelligence-mode .brand-word,
+body.intelligence-mode .sidebar-collapse,
+body.intelligence-mode .workspace-meta,
+body.intelligence-mode .workspace-switch .chevron,
+body.intelligence-mode .workspace-switch>span:not(.workspace-monogram),
+body.intelligence-mode .nav-label,
+body.intelligence-mode .nav-item>span:not(.nav-icon),
+body.intelligence-mode .nav-item kbd,
+body.intelligence-mode .nav-count,
+body.intelligence-mode .ai-mini,
+body.intelligence-mode .sidebar-health>span:not(.status-dot),
+body.intelligence-mode .sidebar-health .tiny,
+body.intelligence-mode .user-meta,
+body.intelligence-mode .user-card .tiny{display:none!important}
+body.intelligence-mode .workspace-switch{width:48px;height:48px;margin:8px auto 16px;padding:7px;justify-content:center}
+body.intelligence-mode .nav-groups{padding:0 10px}
+body.intelligence-mode .nav-item{height:48px;justify-content:center;padding:0;margin:3px 0}
+body.intelligence-mode .nav-icon{margin:0}
+body.intelligence-mode .sidebar-health{justify-content:center;padding:12px}
+body.intelligence-mode .user-card{justify-content:center;padding:12px 0}
+body.intelligence-mode .main-content{max-width:1600px;margin:0 auto;padding:24px clamp(18px,2.5vw,40px) 40px}
+body.intelligence-mode .page-head{margin-bottom:14px}
+body.intelligence-mode .page-head h1{font-size:29px}
+body.intelligence-mode .page-head p{font-size:14px}
+body.intelligence-mode .info-banner{font-size:13px;padding:14px 17px}
+body.intelligence-mode .metric-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+body.intelligence-mode .ai-layout{
+  display:grid;grid-template-columns:280px minmax(0,1fr);
+  min-height:min(760px,calc(100vh - 230px));
+  border:1px solid var(--line);border-radius:18px;overflow:hidden;
+  background:var(--surface);box-shadow:0 20px 70px rgba(0,0,0,.16)
+}
+body.intelligence-mode .ai-conversations{background:var(--surface-2)}
+body.intelligence-mode .ai-side-head{padding:19px 17px}
+body.intelligence-mode .ai-side-head b{font-size:15px}
+body.intelligence-mode .ai-side-head small{font-size:12px}
+body.intelligence-mode .ai-thread-list{padding:12px;max-height:none}
+body.intelligence-mode .ai-thread{padding:12px;gap:10px;border-radius:11px}
+body.intelligence-mode .ai-thread b{font-size:13px;max-width:195px}
+body.intelligence-mode .ai-thread small{font-size:11px}
+body.intelligence-mode .ai-empty-note{font-size:13px;padding:24px 14px}
+body.intelligence-mode .ai-side-foot{font-size:12px;padding:15px}
+body.intelligence-mode .ai-workspace{min-height:0;min-height:690px;background:var(--bg-2)}
+body.intelligence-mode .ai-workspace-head{padding:23px 30px 18px;align-items:center}
+body.intelligence-mode .ai-workspace-head h2{font-size:23px}
+body.intelligence-mode .ai-workspace-head p{font-size:13px}
+body.intelligence-mode .ai-status{font-size:12px;padding:7px 12px}
+body.intelligence-mode .ai-messages{
+  width:min(900px,100%);margin:0 auto;padding:32px clamp(18px,4vw,56px);
+  flex:1;max-height:none;min-height:400px;gap:22px
+}
+body.intelligence-mode .ai-orb{width:64px;height:64px;border-radius:21px;font-size:27px}
+body.intelligence-mode .chat-welcome{max-width:660px}
+body.intelligence-mode .chat-welcome h3{font-size:25px;letter-spacing:-.03em}
+body.intelligence-mode .chat-welcome p{font-size:15px;line-height:1.7}
+body.intelligence-mode .ai-prompt-grid{gap:11px;margin-top:25px}
+body.intelligence-mode .ai-prompt-grid button{font-size:13px;padding:15px 16px;border-radius:13px;line-height:1.5}
+body.intelligence-mode .ai-message{max-width:min(88%,780px);padding:16px 19px;font-size:15px;line-height:1.8;border-radius:16px}
+body.intelligence-mode .ai-message-head{font-size:11px;margin-bottom:9px}
+body.intelligence-mode .ai-message-head b{font-size:13px}
+body.intelligence-mode .ai-message-content{font-size:15px;line-height:1.85}
+body.intelligence-mode .ai-source-tags{font-size:11px}
+body.intelligence-mode .ai-thinking{font-size:13px}
+body.intelligence-mode .ai-composer{
+  width:min(900px,calc(100% - 48px));margin:0 auto 10px;padding:14px 16px;
+  border-radius:18px;background:var(--surface);border:1px solid var(--line-strong);
+  box-shadow:0 8px 30px rgba(0,0,0,.12)
+}
+body.intelligence-mode .ai-composer textarea{font:15px/1.65 'DM Sans',sans-serif;min-height:66px;max-height:190px;padding:7px}
+body.intelligence-mode .ai-composer-foot{font-size:11px;padding-top:11px}
+body.intelligence-mode .ai-limits{width:min(900px,calc(100% - 48px));margin:0 auto;padding:3px 0 17px;font-size:11px;gap:18px}
+body.intelligence-mode .ai-capability-grid{margin-top:18px}
+body.intelligence-mode .capability-list>div{font-size:13px;padding:12px 0}
+body.intelligence-mode .panel-head h3{font-size:16px}
+body.intelligence-mode .app-footer{max-width:1500px;margin:0 auto 0;padding-left:30px;padding-right:30px}
+body.intelligence-mode .sidebar .brand-mark{width:44px;height:44px}
+
+/* Mobile: the menu button is a true, high-contrast touch target and the drawer sits above content. */
+.mobile-menu{display:none;position:relative;z-index:40;width:44px;height:44px;place-items:center;font-size:22px}
+@media(max-width:760px){
+  .mobile-menu{display:inline-grid}
+  .sidebar{z-index:35;width:min(320px,86vw);height:100dvh;top:0;left:0;position:fixed;transform:translateX(-105%);transition:transform .24s ease}
+  .sidebar.open{transform:translateX(0)}
+  .mobile-scrim{z-index:30}
+  .mobile-scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.58)}
+  .main-shell{margin-left:0!important}
+  .topbar{height:62px;padding:0 12px;position:sticky;top:0;z-index:20}
+  .main-content{padding:23px 15px 30px}
+  .breadcrumbs{font-size:12px}
+  .global-search{width:40px;min-width:40px;height:40px}
+  .topbar-actions{gap:4px}
+  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.intelligence-mode .sidebar{width:min(320px,86vw)}
+  body.intelligence-mode .sidebar .brand-word,
+  body.intelligence-mode .sidebar .workspace-meta,
+  body.intelligence-mode .sidebar .nav-label,
+  body.intelligence-mode .sidebar .nav-item>span:not(.nav-icon),
+  body.intelligence-mode .sidebar .user-meta{display:initial!important}
+  body.intelligence-mode .sidebar .sidebar-collapse{display:grid!important}
+  body.intelligence-mode .sidebar .workspace-switch{width:auto;margin:8px 12px 16px;justify-content:flex-start}
+  body.intelligence-mode .sidebar .nav-groups{padding:0 11px}
+  body.intelligence-mode .sidebar .nav-item{justify-content:flex-start;height:43px;padding:9px 11px}
+  body.intelligence-mode .sidebar .nav-item>span:not(.nav-icon){display:inline!important}
+  body.intelligence-mode .main-shell{margin-left:0!important}
+  body.intelligence-mode .ai-layout{grid-template-columns:1fr;min-height:calc(100dvh - 170px)}
+  body.intelligence-mode .ai-conversations{border-right:0;border-bottom:1px solid var(--line);max-height:180px}
+  body.intelligence-mode .ai-thread-list{display:flex;overflow-x:auto;max-height:105px;gap:7px}
+  body.intelligence-mode .ai-thread-wrap{min-width:210px;display:flex;align-items:center}
+  body.intelligence-mode .ai-thread{min-width:0}
+  body.intelligence-mode .ai-workspace{min-height:540px}
+  body.intelligence-mode .ai-workspace-head{padding:17px 17px 13px}
+  body.intelligence-mode .ai-workspace-head h2{font-size:19px}
+  body.intelligence-mode .ai-messages{padding:22px 15px;min-height:300px}
+  body.intelligence-mode .ai-message{max-width:96%;font-size:14px;padding:13px 14px}
+  body.intelligence-mode .ai-message-content{font-size:14px}
+  body.intelligence-mode .chat-welcome h3{font-size:21px}
+  body.intelligence-mode .chat-welcome p{font-size:14px}
+  body.intelligence-mode .ai-prompt-grid{grid-template-columns:1fr}
+  body.intelligence-mode .ai-composer{width:calc(100% - 24px);margin:0 12px 10px;padding:11px}
+  body.intelligence-mode .ai-composer textarea{font-size:14px}
+  body.intelligence-mode .ai-limits{width:calc(100% - 24px);font-size:10px;padding-bottom:12px}
+  body.intelligence-mode .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
