@@ -1,0 +1,41 @@
+name: Nexus beta frontend checks
+
+on:
+  push:
+    branches:
+      - beta/nexus-ui-v2-chat-experience
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check application JavaScript syntax
+        run: node --check app.js
+      - name: Check HTML structure and required local assets
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          class Check(HTMLParser):
+              pass
+          html = Path("index.html").read_text(encoding="utf-8")
+          Check().feed(html)
+          for path in ("styles.css", "nexus-v2.css", "app.js", "favicon.svg", "assets/davonium-d-icon.webp"):
+              if not Path(path).is_file():
+                  raise SystemExit(f"Missing required file: {path}")
+          if 'href="./nexus-v2.css"' not in html:
+              raise SystemExit("V2 stylesheet is not linked")
+          if 'assets/davonium-d-icon.webp' not in html:
+              raise SystemExit("Official Davonium logo is not referenced")
+          print("HTML parsed and required frontend assets found.")
+          PY
