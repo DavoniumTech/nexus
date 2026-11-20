@@ -1,0 +1,38 @@
+name: Nexus frontend validation
+
+on:
+  push:
+    branches:
+      - main
+      - "beta/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate JavaScript syntax
+        run: node --check app.js
+      - name: Validate required static assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root = Path(".")
+          required = ["index.html", "styles.css", "app.js", "favicon.svg"]
+          missing = [item for item in required if not (root / item).is_file()]
+          if missing:
+              raise SystemExit("Missing required files: " + ", ".join(missing))
+          html = (root / "index.html").read_text(encoding="utf-8")
+          for asset in ('href="./styles.css"', 'src="./app.js"', 'href="./favicon.svg"'):
+              if asset not in html:
+                  raise SystemExit("index.html is missing expected asset reference: " + asset)
+          print("Static application assets and references are present.")
+          PY
