@@ -31,7 +31,7 @@ jobs:
           if missing:
               raise SystemExit("Missing required files: " + ", ".join(missing))
           html = (root / "index.html").read_text(encoding="utf-8")
-          for asset in ('href="./styles.css"', 'src="./app.js"', 'href="./favicon.svg"'):
+          for asset in ('href="./styles.css"', 'src="./app.js"', 'https://www.davoniumtech.com/assets/images/davonium-d-icon.webp'):
               if asset not in html:
                   raise SystemExit("index.html is missing expected asset reference: " + asset)
           print("Static application assets and references are present.")
