@@ -1,10 +1,10 @@
 # Davonium Nexus — Company Operating System
 
-A responsive, static web application for the existing Davonium Technologies Supabase Nexus. It brings the company's delivery, people, clients, products, governance, documents, communication, security, and read-only intelligence workflows into one authenticated interface.
+A responsive, static web application for the existing Davonium Technologies Supabase project. It brings the company's delivery, people, clients, products, governance, documents, communication, security, and read-only intelligence workflows into one authenticated interface.
 
 ## What is included
 
-- Command centre: live Nexus overview, delivery signals, project status, service status, incidents, and notifications.
+- Nexus Overview: live executive signals for delivery, project progress, products, strategy, services, incidents, integrations, and notifications.
 - Execution: projects, tasks, project members, milestones, task discussions, project decision records, and deadlines.
 - Company operations: client accounts, members, invitations, role and membership administration, teams, departments, and permission overrides.
 - Product operations: product catalogue, metric definitions, verified metrics, manual-metric review, metric history, integration records, ingestion history, and release notes.
@@ -23,7 +23,7 @@ On first open, select **Connection settings** and enter:
 - Project URL: `https://cmkroryimxskgqlaiiym.supabase.co`
 - Key: the Supabase **publishable** key (or legacy anon key) from the project's API settings.
 
-Then sign in with an existing, active Davonium Nexus account. The app resolves the Nexus using its signed-in session and the `davonium-technologies` slug. The default Nexus URL is already configured; the browser key is intentionally not included in the repository.
+Then sign in with an existing, active Davonium Nexus account. The app resolves the Davonium Technologies organisation using its signed-in session and the `davonium-technologies` slug. The Supabase project URL is already configured; the browser key is intentionally not included in the repository.
 
 ## Backend integration
 
@@ -48,7 +48,7 @@ See [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) for the design principles and tokens.
 
 ## Verification note
 
-The frontend source was syntax-checked and the static shell was served locally during preparation. The app has not been authenticated against the owner's live Nexus in this build environment, so account-specific permissions, real data, and every write path still require a signed-in browser verification after the correct publishable key is entered. The deployed Supabase functions and database were not changed by this frontend build.
+The frontend JavaScript is checked by the repository's GitHub Actions workflow, and the static shell is designed for the existing hosting architecture. The app has not been authenticated against the owner's live Nexus in this build environment, so account-specific permissions, real data, and every write path still require a signed-in browser verification after the correct publishable key is entered. The deployed Supabase functions and database were not changed by this frontend build.
 
 
 ## Appearance and readability
