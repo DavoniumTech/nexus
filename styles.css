@@ -685,3 +685,7 @@ button,input,select,textarea{font-size:inherit}
   .overview-grid .panel-head{gap:8px;flex-wrap:wrap}
   .overview-grid .panel-link{white-space:nowrap}
 }
+
+.ai-workspace-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap;flex-shrink:0}
+.ai-workspace-actions .btn{white-space:nowrap}
+@media(max-width:760px){.ai-workspace-actions{width:100%;justify-content:space-between}.ai-workspace-actions .btn{min-height:40px}}
