@@ -132,7 +132,21 @@ async function main(){
       if (body.action === "analytics.dashboard") {
         payload = { success: true, analytics: { events_30d: 4, events_7d: 3, active_users_30d: 1, daily: [{day:"2026-11-24",events:4}], top_pages: [] } };
       } else if (body.action === "finance.analytics") {
-        payload = { success: true, analytics: { posted_entry_count: 0, sampling_limited: false, currencies: [] } };
+        payload = {
+          success: true,
+          analytics: {
+            posted_entry_count: 2,
+            sampling_limited: false,
+            currencies: [{
+              currency_code: "NGN",
+              line_count: 4,
+              monthly: [
+                { month: "2026-10", label: "Oct 26", revenue: 1200, expenses: 700 },
+                { month: "2026-11", label: "Nov 26", revenue: 1500, expenses: 850 }
+              ]
+            }]
+          }
+        };
       } else {
         payload = { success: true, analytics: {}, finance: { accounts: [], totals: {} }, accounts: [], entries: [], budgets: [] };
       }
@@ -195,6 +209,24 @@ async function main(){
     "Authenticated dashboard must display the resolved company");
   assert.ok(await loginPage.locator(".os-module-card").count() >= 4,
     "Authenticated dashboard must render company modules");
+  if (await loginPage.locator("#cookieReject").isVisible()) {
+    await loginPage.locator("#cookieReject").click();
+    await loginPage.waitForSelector("#cookieConsent.hidden");
+  }
+
+  // Analytics line chart is rendered from consented fixture events.
+  await loginPage.locator('#nav [data-page="analytics"]').click();
+  await loginPage.waitForSelector(".os-thin-chart svg");
+  assert.ok(await loginPage.locator(".os-chart-line").count() >= 1,
+    "Company analytics must render thin SVG trend lines");
+
+  // Finance analytics uses posted-ledger fixture data, never production sample records.
+  await loginPage.locator('#nav [data-page="finance"]').click();
+  await loginPage.locator('[data-finance-tab="analytics"]').click();
+  await loginPage.waitForSelector(".os-finance-chart-card .os-thin-chart svg");
+  assert.ok(await loginPage.locator(".os-finance-chart-card .os-chart-line").count() >= 2,
+    "Finance analytics must render separate revenue and expense trend lines");
+
   // Test all four appearance modes from the real settings panel.
   await loginPage.locator('#nav [data-page="settings"]').click();
   await loginPage.waitForSelector('[data-act="theme-black"]', { state: "visible" });
