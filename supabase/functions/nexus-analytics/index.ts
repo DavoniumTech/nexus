@@ -351,6 +351,172 @@ export default {
         }, 403);
 
         // ====================================================
+        // NEXUS PRIVACY-MINIMISED ANALYTICS + FINANCE LEDGER
+        // User session, workspace permissions and RLS remain mandatory.
+        // ====================================================
+
+        if (action === "events.ingest") {
+          if (!can("workspace.view")) return denied();
+          if (input.analytics_consent !== true) return reply({ success: false, code: "ANALYTICS_CONSENT_REQUIRED" }, 403);
+          if (!Array.isArray(input.events) || input.events.length < 1 || input.events.length > 30) return reply({ error: "Provide between 1 and 30 consented analytics events." }, 400);
+          const allowedEvents = new Set(["page_view", "command_used", "pwa_installed", "offline_session"]);
+          const rows = [];
+          for (const item of input.events) {
+            if (!item || typeof item !== "object" || Array.isArray(item) ||
+                typeof item.client_event_id !== "string" || !validUuid(item.client_event_id) ||
+                typeof item.event_key !== "string" || !allowedEvents.has(item.event_key) ||
+                (item.page_key != null && (typeof item.page_key !== "string" || !/^[a-z][a-z0-9_-]{0,50}$/.test(item.page_key)))) {
+              return reply({ error: "An analytics event is invalid." }, 400);
+            }
+            rows.push({ organization_id: organization.id, client_event_id: item.client_event_id, actor_user_id: userId, event_key: item.event_key, page_key: item.page_key ?? null });
+          }
+          const { error } = await ctx.supabase.from("analytics_events").upsert(rows, { onConflict: "organization_id,client_event_id", ignoreDuplicates: true });
+          if (error) return reply({ error: "Consent-based analytics could not be recorded.", code: error.code }, errorStatus(error.code));
+          return reply({ success: true, accepted: rows.length, privacy: "No content, form values, credentials, IP address, or personal event properties are collected." });
+        }
+
+        if (action === "analytics.dashboard") {
+          if (!can("analytics.view")) return denied();
+          const since7 = new Date(Date.now() - 7 * 86400000).toISOString();
+          const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+          const [recentResult, allTimeResult] = await Promise.all([
+            ctx.supabase.from("analytics_events").select("event_key,page_key,occurred_at,actor_user_id")
+              .eq("organization_id", organization.id).gte("occurred_at", since30)
+              .order("occurred_at", { ascending: false }).limit(2000),
+            ctx.supabase.from("analytics_events").select("id", { count: "exact", head: true }).eq("organization_id", organization.id)
+          ]);
+          if (recentResult.error || allTimeResult.error) return reply({ error: "Analytics data could not be loaded." }, 500);
+          const recent = recentResult.data ?? [], dayBins = new Map(), pageCounts = new Map(), activeUsers = new Set();
+          let events7d = 0;
+          for (const row of recent) {
+            const day = String(row.occurred_at).slice(0,10);
+            dayBins.set(day,(dayBins.get(day) ?? 0)+1);
+            if (row.page_key) pageCounts.set(row.page_key,(pageCounts.get(row.page_key) ?? 0)+1);
+            activeUsers.add(row.actor_user_id);
+            if (row.occurred_at >= since7) events7d += 1;
+          }
+          const daily = [];
+          for (let offset=29; offset>=0; offset-=1) {
+            const day = new Date(Date.now()-offset*86400000).toISOString().slice(0,10);
+            daily.push({ day, events: dayBins.get(day) ?? 0 });
+          }
+          return reply({ success: true, analytics: {
+            events_30d: recent.length, events_7d: events7d, events_all_time: allTimeResult.count ?? 0,
+            active_users_30d: activeUsers.size, sampling_limited: recent.length>=2000,
+            daily, top_pages: [...pageCounts.entries()].map(([page,count])=>({page,views:count})).sort((a,b)=>b.views-a.views).slice(0,10)
+          }, privacy: { consent_required: true, payload_collection: false, personal_content_collection: false }, generated_at: new Date().toISOString() });
+        }
+
+        if (action === "finance.overview") {
+          if (!can("finance.view")) return denied();
+          const [balancesR, entriesR, budgetsR] = await Promise.all([
+            ctx.supabase.from("nexus_finance_account_balances").select("id,account_code,name,account_type,normal_balance,currency_code,current_balance,is_active")
+              .eq("organization_id", organization.id).eq("is_active", true).order("account_code"),
+            ctx.supabase.from("finance_journal_entries").select("id,entry_date,reference,description,currency_code,status,created_at")
+              .eq("organization_id", organization.id).eq("status","posted").order("entry_date",{ascending:false}).limit(12),
+            ctx.supabase.from("finance_budgets").select("id,name,period_start,period_end,amount,currency_code,status,account_id")
+              .eq("organization_id", organization.id).eq("status","active").order("period_start",{ascending:false}).limit(30)
+          ]);
+          if (balancesR.error || entriesR.error || budgetsR.error) return reply({ error: "Finance overview could not be loaded." },500);
+          const balances = balancesR.data ?? [], totals = { asset:{}, liability:{}, equity:{}, revenue:{}, expense:{} };
+          for (const row of balances) {
+            const key = row.account_type;
+            if (!totals[key]) continue;
+            totals[key][row.currency_code] = (totals[key][row.currency_code] ?? 0)+Number(row.current_balance ?? 0);
+          }
+          return reply({ success:true, finance:{ accounts:balances, recent_entries:entriesR.data ?? [], budgets:budgetsR.data ?? [], totals,
+            currency_policy:"Balances are grouped by currency. Do not combine different currencies." }});
+        }
+
+        if (action === "finance.accounts.list") {
+          if (!can("finance.view")) return denied();
+          const { data,error } = await ctx.supabase.from("nexus_finance_account_balances")
+            .select("id,account_code,name,account_type,normal_balance,currency_code,description,is_system,is_active,total_debits,total_credits,current_balance")
+            .eq("organization_id",organization.id).order("account_code").limit(500);
+          if (error) return reply({error:"Finance accounts could not be retrieved."},500);
+          return reply({success:true,accounts:data ?? []});
+        }
+
+        if (action === "finance.accounts.create") {
+          if (!can("finance.accounts.manage")) return denied();
+          const code=cleanText(input.account_code,2,24), name=cleanText(input.name,2,120);
+          const types=["asset","liability","equity","revenue","expense"];
+          const normal=input.normal_balance, currency=typeof input.currency_code==="string"?input.currency_code.toUpperCase():"NGN";
+          if (!code || !/^[A-Za-z0-9._-]+$/.test(code) || !name || !types.includes(String(input.account_type)) ||
+              !["debit","credit"].includes(String(normal)) || !/^[A-Z]{3}$/.test(currency)) return reply({error:"Account code, name, type, normal balance and three-letter currency are required."},400);
+          const {data,error}=await ctx.supabase.from("finance_accounts").insert({
+            organization_id:organization.id,account_code:code,name,account_type:input.account_type,normal_balance:normal,currency_code:currency,
+            description:typeof input.description==="string"?input.description.slice(0,1000):null,created_by:userId
+          }).select("id,account_code,name,account_type,normal_balance,currency_code,is_active").single();
+          if(error) return reply({error:"Finance account could not be created.",code:error.code},errorStatus(error.code));
+          return reply({success:true,account:data},201);
+        }
+
+        if (action === "finance.accounts.update") {
+          if (!can("finance.accounts.manage")) return denied();
+          if (!validUuid(input.account_id) || typeof input.is_active!=="boolean") return reply({error:"A valid account and active state are required."},400);
+          const {data,error}=await ctx.supabase.from("finance_accounts").update({is_active:input.is_active,updated_at:new Date().toISOString()})
+            .eq("id",input.account_id).eq("organization_id",organization.id).eq("is_system",false)
+            .select("id,account_code,name,is_active").maybeSingle();
+          if(error || !data) return reply({error:"Account status could not be changed."},errorStatus(error?.code));
+          return reply({success:true,account:data});
+        }
+
+        if (action === "finance.entries.list") {
+          if (!can("finance.view")) return denied();
+          const {data,error}=await ctx.supabase.from("finance_journal_entries")
+            .select("id,entry_date,reference,description,currency_code,status,source,posted_at,created_at,finance_journal_lines(id,line_number,memo,debit,credit,finance_accounts(account_code,name))")
+            .eq("organization_id",organization.id).order("entry_date",{ascending:false}).limit(100);
+          if(error) return reply({error:"Finance journal could not be retrieved."},500);
+          return reply({success:true,entries:data ?? []});
+        }
+
+        if (action === "finance.entries.create") {
+          if (!can("finance.entries.manage")) return denied();
+          if (!validDate(input.entry_date) || !cleanText(input.description,2,2000) || !Array.isArray(input.lines)) return reply({error:"Provide a valid date, description and balanced journal lines."},400);
+          const {data,error}=await ctx.supabase.rpc("nexus_finance_create_entry",{
+            p_organization_id:organization.id,p_entry_date:input.entry_date,p_description:input.description,
+            p_reference:typeof input.reference==="string"?input.reference.slice(0,120):null,
+            p_currency_code:typeof input.currency_code==="string"?input.currency_code:"NGN",p_lines:input.lines
+          });
+          if(error) return reply({error:"Journal entry failed its balance, currency or permission checks.",code:error.code},errorStatus(error.code));
+          return reply({success:true,entry:data},201);
+        }
+
+        if (action === "finance.budgets.list") {
+          if (!can("finance.view")) return denied();
+          const {data,error}=await ctx.supabase.from("finance_budgets")
+            .select("id,name,account_id,period_start,period_end,amount,currency_code,status,notes,created_at")
+            .eq("organization_id",organization.id).order("period_start",{ascending:false}).limit(200);
+          if(error) return reply({error:"Finance budgets could not be retrieved."},500);
+          return reply({success:true,budgets:data ?? []});
+        }
+
+        if (action === "finance.budgets.create") {
+          if (!can("finance.budgets.manage")) return denied();
+          const name=cleanText(input.name,2,120),currency=typeof input.currency_code==="string"?input.currency_code.toUpperCase():"NGN";
+          const amount=Number(input.amount);
+          if(!name || !validDate(input.period_start) || !validDate(input.period_end) || Date.parse(input.period_end)<Date.parse(input.period_start) ||
+             !Number.isFinite(amount) || amount<=0 || !/^[A-Z]{3}$/.test(currency) || (input.account_id!=null && !validUuid(input.account_id)))
+            return reply({error:"Budget name, valid date range, positive amount and ISO currency are required."},400);
+          const {data,error}=await ctx.supabase.from("finance_budgets").insert({
+            organization_id:organization.id,name,period_start:input.period_start,period_end:input.period_end,amount,currency_code:currency,
+            account_id:input.account_id ?? null,notes:typeof input.notes==="string"?input.notes.slice(0,2000):null,created_by:userId
+          }).select("id,name,period_start,period_end,amount,currency_code,status").single();
+          if(error) return reply({error:"Budget could not be created.",code:error.code},errorStatus(error.code));
+          return reply({success:true,budget:data},201);
+        }
+
+        if (action === "finance.budgets.update") {
+          if (!can("finance.budgets.manage")) return denied();
+          if(!validUuid(input.budget_id) || !["active","paused","archived"].includes(String(input.status))) return reply({error:"A valid budget and status are required."},400);
+          const {data,error}=await ctx.supabase.from("finance_budgets").update({status:input.status,updated_at:new Date().toISOString()})
+            .eq("id",input.budget_id).eq("organization_id",organization.id).select("id,name,status").maybeSingle();
+          if(error || !data) return reply({error:"Budget status could not be updated."},errorStatus(error?.code));
+          return reply({success:true,budget:data});
+        }
+
+        // ====================================================
         // ACTION: DASHBOARD OVERVIEW
         // ====================================================
 

@@ -172,17 +172,6 @@ function toolError(message: string): ToolResult {
 function classifyCompanyRequest(message: string): ScopeDecision {
   const text = message.toLowerCase().trim();
 
-  const unsupportedBusinessModule =
-    /\b(finance|financial|revenue|expenses|expense|cash flow|payroll|accounting|invoice|invoices|sales pipeline|crm|deal pipeline|commission|commissions)\b/i.test(text);
-
-  if (unsupportedBusinessModule) {
-    return {
-      allowed: false,
-      code: "MODULE_NOT_CONNECTED",
-      message: "That information is not yet connected to verified Davonium Nexus records. Finance and the full CRM/Sales backend must be implemented before DVNM Intelligence can analyse it."
-    };
-  }
-
   const unrelatedTopic =
     /\b(weather|football|soccer|basketball|tennis|politics|election|celebrity|recipe|joke|poem|fiction|homework|exam|horoscope|relationship|dating|travel|translation|movie|music|general trivia)\b/i.test(text);
 
@@ -209,7 +198,7 @@ function classifyCompanyRequest(message: string): ScopeDecision {
   // Require an actual Nexus data domain, not merely a company name or a
   // third-party product name. This keeps general technology questions out.
   const nexusDataDomain =
-    /\b(project|projects|task|tasks|milestone|milestones|client|clients|investor|investors|investor update|investor updates|investor access|product|products|product release|product releases|metric|metrics|analytics|service|services|service status|incident|incidents|integration|integrations|document|documents|announcement|announcements|notification|notifications|objective|objectives|key result|key results|audit|department|departments|team|teams|member|members|channel|channels|permission|permissions|monitoring|security|usage|edge function|edge functions|workspace overview|company overview)\b/i.test(text);
+    /\b(project|projects|task|tasks|milestone|milestones|client|clients|investor|investors|investor update|investor updates|investor access|product|products|product release|product releases|metric|metrics|analytics|finance|financial|revenue|expense|expenses|budget|budgets|journal|journals|ledger|account balance|cash flow|service|services|service status|incident|incidents|integration|integrations|document|documents|announcement|announcements|notification|notifications|objective|objectives|key result|key results|audit|department|departments|team|teams|member|members|channel|channels|permission|permissions|monitoring|security|usage|edge function|edge functions|workspace overview|company overview)\b/i.test(text);
 
   const operationalIntent =
     /\b(what|which|who|when|how many|show|list|count|calculate|compute|summarise|summarize|summary|status|compare|analyse|analyze|report|find|check|review|recent|latest|active|overdue|pending|completed|progress|performance|health|overview|explain|tell me|need to know|break down|total|average)\b/i.test(text);
@@ -218,7 +207,7 @@ function classifyCompanyRequest(message: string): ScopeDecision {
     return {
       allowed: false,
       code: "OUTSIDE_COMPANY_SCOPE",
-      message: "Ask a specific operational question about authorised Davonium Nexus records: projects, tasks, clients, investors, products, metrics, integrations, documents, notifications, teams, objectives or monitored services."
+      message: "Ask a specific operational question about authorised Davonium Nexus records: projects, tasks, clients, investors, products, metrics, authorised finance ledger and budgets, analytics, integrations, documents, notifications, teams, objectives or monitored services."
     };
   }
 
@@ -368,6 +357,11 @@ const TOOL_DECLARATIONS: FunctionDeclaration[] = [
     limit: { type: "INTEGER", description: "Maximum 20 results." }
   }),
   toolDeclaration("list_company_objectives", "Retrieve company objectives and key results visible under the OKR permission."),
+
+  toolDeclaration("get_finance_overview", "Retrieve the user's authorised company finance summary grouped by currency."),
+  toolDeclaration("list_finance_accounts", "List finance accounts and authorised balances.", { limit: { type: "INTEGER", description: "Maximum 30 results." } }),
+  toolDeclaration("list_finance_entries", "List recent journal entries visible to the user.", { limit: { type: "INTEGER", description: "Maximum 30 results." } }),
+  toolDeclaration("list_finance_budgets", "List finance budgets visible to the user.", { limit: { type: "INTEGER", description: "Maximum 30 results." } }),
   toolDeclaration("list_recent_audit_events", "Retrieve permitted audit metadata without event-detail payloads.", {
     limit: { type: "INTEGER", description: "Maximum 30 results." }
   })
@@ -406,6 +400,12 @@ function getAvailableTools(can: (permission: string) => boolean): FunctionDeclar
   if (can("notifications.view")) enabled.add("list_my_notifications");
   if (can("okr.view")) enabled.add("list_company_objectives");
   if (can("audit.view")) enabled.add("list_recent_audit_events");
+  if (can("finance.view")) {
+    enabled.add("get_finance_overview");
+    enabled.add("list_finance_accounts");
+    enabled.add("list_finance_entries");
+    enabled.add("list_finance_budgets");
+  }
 
   return TOOL_DECLARATIONS.filter((tool) => enabled.has(tool.name));
 }
@@ -706,6 +706,34 @@ async function executeTool(
       return toolOk({ notifications: data ?? [] });
     }
 
+
+    case "get_finance_overview": {
+      if (!can("finance.view")) return toolError("Finance access denied.");
+      const { data, error } = await db.from("nexus_finance_account_balances").select("account_code,name,account_type,currency_code,current_balance,is_active").eq("organization_id",organizationId).eq("is_active",true).order("account_code").limit(100);
+      if (error) return toolError("Authorised finance balances could not be retrieved.");
+      const grouped: Record<string, Record<string, number>> = {};
+      for (const row of data ?? []) { const group=grouped[row.account_type] ?? (grouped[row.account_type]={}); group[row.currency_code]=(group[row.currency_code] ?? 0)+Number(row.current_balance ?? 0); }
+      return toolOk({ balances_by_account_type_and_currency:grouped, note:"Balances are grouped by currency. Different currencies are never combined." });
+    }
+    case "list_finance_accounts": {
+      if (!can("finance.view")) return toolError("Finance access denied.");
+      const {data,error}=await db.from("nexus_finance_account_balances").select("account_code,name,account_type,normal_balance,currency_code,current_balance,is_active").eq("organization_id",organizationId).order("account_code").limit(limit);
+      if(error) return toolError("Finance accounts could not be retrieved.");
+      return toolOk({accounts:data ?? []});
+    }
+    case "list_finance_entries": {
+      if (!can("finance.view")) return toolError("Finance access denied.");
+      const {data,error}=await db.from("finance_journal_entries").select("entry_date,reference,description,currency_code,status,posted_at,finance_journal_lines(line_number,debit,credit,finance_accounts(account_code,name))").eq("organization_id",organizationId).order("entry_date",{ascending:false}).limit(limit);
+      if(error) return toolError("Finance journal could not be retrieved.");
+      return toolOk({entries:data ?? []});
+    }
+    case "list_finance_budgets": {
+      if (!can("finance.view")) return toolError("Finance access denied.");
+      const {data,error}=await db.from("finance_budgets").select("name,period_start,period_end,amount,currency_code,status").eq("organization_id",organizationId).order("period_start",{ascending:false}).limit(limit);
+      if(error) return toolError("Finance budgets could not be retrieved.");
+      return toolOk({budgets:data ?? []});
+    }
+
     case "list_company_objectives": {
       if (!can("okr.view")) return toolError("Company objective access denied.");
       const [objectives, keyResults] = await Promise.all([
@@ -765,7 +793,7 @@ SOLE PURPOSE
 Answer questions about the current Davonium Technologies organisation by using the authorised read-only Nexus database tools supplied in this request.
 
 PERMITTED DATA DOMAINS
-Company members and organisation structure; projects, tasks, milestones and decisions; client account records; Davonium products and verified metrics; product releases; monitored services and integrations; published announcements; authorised project-document metadata; investor updates and aggregate investor access where permitted; the signed-in user's notifications; company objectives and key results; safe audit metadata.
+Finance account balances, journal metadata and budget records are available only when the caller has the explicit finance.view permission. Never expose bank-login details, payment credentials or card numbers. Company members and organisation structure; projects, tasks, milestones and decisions; client account records; Davonium products and verified metrics; product releases; monitored services and integrations; published announcements; authorised project-document metadata; investor updates and aggregate investor access where permitted; the signed-in user's notifications; company objectives and key results; safe audit metadata.
 
 STRICT KNOWLEDGE BOUNDARY
 Do not answer from general pretrained knowledge. Do not give general tutorials, public technology explanations, homework, entertainment, personal advice, marketing copy, sales pitches, proposals, stories or unrelated coding help. Third-party technology names are in scope only when the question asks about an actual authorised Davonium/Nexus record and a registered tool can retrieve it.
