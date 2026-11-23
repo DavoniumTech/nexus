@@ -428,6 +428,92 @@ export default {
             currency_policy:"Balances are grouped by currency. Do not combine different currencies." }});
         }
 
+        if (action === "finance.analytics") {
+          if (!can("finance.view")) return denied();
+
+          const now = new Date();
+          const monthDates = Array.from({ length: 12 }, (_, offset) =>
+            new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11 + offset, 1))
+          );
+          const fromDate = monthDates[0].toISOString().slice(0, 10);
+          const monthKeys = monthDates.map(date => date.toISOString().slice(0, 7));
+          const monthLabels = monthDates.map(date =>
+            new Intl.DateTimeFormat("en", { month: "short", year: "2-digit", timeZone: "UTC" }).format(date)
+          );
+
+          const { data, error } = await ctx.supabase
+            .from("finance_journal_entries")
+            .select("entry_date,currency_code,finance_journal_lines(debit,credit,finance_accounts(account_type,normal_balance,currency_code))")
+            .eq("organization_id", organization.id)
+            .eq("status", "posted")
+            .gte("entry_date", fromDate)
+            .order("entry_date", { ascending: true })
+            .limit(5000);
+
+          if (error) {
+            return reply({ error: "Posted finance analytics could not be retrieved." }, 500);
+          }
+
+          const buckets = new Map<string, { revenue: number[]; expenses: number[]; lines: number }>();
+          for (const entry of data ?? []) {
+            const monthIndex = monthKeys.indexOf(String(entry.entry_date ?? "").slice(0, 7));
+            if (monthIndex < 0) continue;
+
+            for (const line of entry.finance_journal_lines ?? []) {
+              const relation = line.finance_accounts;
+              const account = Array.isArray(relation) ? relation[0] : relation;
+              if (!account || !["revenue", "expense"].includes(String(account.account_type))) continue;
+
+              const currency = String(account.currency_code || entry.currency_code || "").toUpperCase();
+              if (!/^[A-Z]{3}$/.test(currency)) continue;
+              if (!buckets.has(currency)) {
+                buckets.set(currency, {
+                  revenue: Array(12).fill(0),
+                  expenses: Array(12).fill(0),
+                  lines: 0
+                });
+              }
+
+              const bucket = buckets.get(currency)!;
+              const debit = Number(line.debit ?? 0);
+              const credit = Number(line.credit ?? 0);
+              const normalBalance = account.normal_balance ||
+                (account.account_type === "revenue" ? "credit" : "debit");
+              const movement = normalBalance === "credit" ? credit - debit : debit - credit;
+
+              if (!Number.isFinite(movement)) continue;
+              if (account.account_type === "revenue") bucket.revenue[monthIndex] += movement;
+              if (account.account_type === "expense") bucket.expenses[monthIndex] += movement;
+              bucket.lines += 1;
+            }
+          }
+
+          const currencies = [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([currency_code, values]) => ({
+            currency_code,
+            line_count: values.lines,
+            monthly: monthKeys.map((month, index) => ({
+              month,
+              label: monthLabels[index],
+              revenue: Number(values.revenue[index].toFixed(2)),
+              expenses: Number(values.expenses[index].toFixed(2))
+            }))
+          }));
+
+          return reply({
+            success: true,
+            analytics: {
+              period_start: fromDate,
+              period_end: now.toISOString().slice(0, 10),
+              months: 12,
+              posted_entry_count: (data ?? []).length,
+              sampling_limited: (data ?? []).length >= 5000,
+              currencies,
+              source: "posted double-entry journal lines only",
+              currency_policy: "Each currency is reported separately; currencies are never combined."
+            }
+          });
+        }
+
         if (action === "finance.accounts.list") {
           if (!can("finance.view")) return denied();
           const { data,error } = await ctx.supabase.from("nexus_finance_account_balances")
