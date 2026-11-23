@@ -1,0 +1,23 @@
+{
+  "name": "Davonium Nexus",
+  "short_name": "Nexus",
+  "description": "Secure operating environment for Davonium Technologies.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "./assets/branding/davonium-d-icon.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

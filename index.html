@@ -13,6 +13,9 @@
   <link rel="icon" type="image/webp" href="./assets/branding/davonium-d-icon.webp">
   <link rel="apple-touch-icon" href="./assets/branding/davonium-d-icon.webp">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,6 +63,8 @@
           <button class="nav-item" data-page="people"><span class="nav-icon" data-icon="users"></span><span>People & teams</span></button>
           <div class="nav-label">COMPANY</div>
           <button class="nav-item" data-page="products"><span class="nav-icon" data-icon="box"></span><span>Products & metrics</span></button>
+          <button class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="activity"></span><span>Company analytics</span></button>
+          <button class="nav-item" data-page="finance"><span class="nav-icon" data-icon="box"></span><span>Finance control</span></button>
           <button class="nav-item" data-page="strategy"><span class="nav-icon" data-icon="target"></span><span>Strategy & decisions</span></button>
           <button class="nav-item" data-page="investors"><span class="nav-icon" data-icon="landmark"></span><span>Investor relations</span></button>
           <button class="nav-item" data-page="documents"><span class="nav-icon" data-icon="files"></span><span>Documents</span></button>
@@ -94,6 +99,7 @@
 
   <div id="modalBackdrop" class="modal-backdrop hidden" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><header class="modal-head"><div><div class="eyebrow" id="modalEyebrow">NEXUS NEXUS</div><h2 id="modalTitle">Create new</h2><p id="modalDescription" class="muted"></p></div><button class="icon-button" id="closeModal" aria-label="Close dialog">×</button></header><div id="modalBody"></div></section></div>
   <div id="commandBackdrop" class="command-backdrop hidden"><section class="command-palette" role="dialog" aria-modal="true" aria-label="Command search"><div class="command-input-wrap"><span data-icon="search"></span><input id="commandSearch" autocomplete="off" placeholder="Search pages, actions and Nexus…"><kbd>ESC</kbd></div><div id="commandResults" class="command-results"></div><div class="command-foot"><span>↑↓ Navigate</span><span>↵ Open</span><span>Ctrl K Close</span></div></section></div>
+  <section id="cookieConsent" class="cookie-consent hidden" aria-label="Cookie and privacy choices"><div class="cookie-consent-copy"><strong>Privacy choices</strong><p>Essential storage supports secure sign-in. Optional usage analytics is off until you choose to enable it.</p><button class="link-button" id="cookieCustomize">Customise preferences</button></div><div class="cookie-consent-actions"><button class="btn btn-secondary" id="cookieReject">Reject optional</button><button class="btn btn-primary" id="cookieAcceptAll">Accept all</button></div></section>
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   <script src="./app.js"></script>
 </body>
