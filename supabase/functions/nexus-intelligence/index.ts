@@ -175,7 +175,7 @@ function classifyCompanyRequest(message: string): ScopeDecision {
   // A short greeting is part of a normal assistant conversation, not a request
   // for company facts. It may receive a polite reply without opening data tools.
   const conversationalGreeting =
-    /^(?:hi|hello|hey|good morning|good afternoon|good evening|good day|how are you|how's it going|how are things|thanks|thank you|thank you very much|nice to meet you|are you there|what can you do|who are you)(?:\\s+(?:there|dvnm|assistant|today|team))?[.!?,\\s]*$/i.test(text);
+    /^(?:hi|hello|hey|good morning|good afternoon|good evening|good day|how are you|how's it going|how are things|thanks|thank you|thank you very much|nice to meet you|are you there|what can you do|who are you)(?:\s+(?:there|dvnm|assistant|today|team))?[.!?,\s]*$/i.test(text);
 
   if (conversationalGreeting) {
     return {
