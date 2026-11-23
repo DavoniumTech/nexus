@@ -81,7 +81,7 @@
   const state = {
     sb:null, session:null, user:null, profile:{}, workspace:{}, role:"member", currentPage:"overview", cache:{},
     permissions:[], permissionMap:{}, booting:false, isCollapsed:false, theme:localStorage.getItem("nexus_theme")||"system",
-    chatId:null, chatMode:"general", chatBusy:false, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
+    chatId:null, chatMode:"general", chatBusy:false, realtimeChannel:null, realtimeRefreshTimer:null, realtimeAIRefreshTimer:null, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
   };
 
   function cfg(){ return {url:(localStorage.getItem("nexus_url")||sessionStorage.getItem("nexus_url")||DEFAULT_URL).replace(/\/$/,""), key:localStorage.getItem("nexus_publishable_key")||sessionStorage.getItem("nexus_publishable_key")||localStorage.getItem("nexus_anon")||""}; }
@@ -152,7 +152,7 @@
     applyTheme();
     if(!connectedClient()){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
     state.sb.auth.onAuthStateChange((event,session)=>{
-      if(event==="SIGNED_OUT"){state.session=null;state.user=null;showAuth();}
+      if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;showAuth();}
       else if(session){state.session=session;state.user=session.user;}
     });
     const {data,error}=await state.sb.auth.getSession();
@@ -176,10 +176,74 @@
       if(perm.ok){const p=perm.data;state.permissions=p.permissions||[];state.permissionMap={};state.permissions.forEach(v=>state.permissionMap[v.key]=!!v.allowed);}
       const inviteId=new URLSearchParams(location.search).get("invitation_id");
       if(inviteId){try{await api("invitations","accept",{invitation_id:inviteId});history.replaceState({},"",location.pathname);notify("Nexus invitation accepted.","success");}catch(error){notify(error.message,"error");}}
-      await updateInboxCount();await navigate(state.role==="client"?"portal":"overview");
+      await updateInboxCount();await setupRealtime();await navigate(state.role==="client"?"portal":"overview");
     }catch(error){console.error("Nexus boot",error);connection(false,"Nexus access needs attention");showAuth(error.message,true);}finally{state.booting=false;}}
-  async function signOut(){try{await state.sb?.auth.signOut();}catch(e){notify(e.message,"error");}state.session=null;state.user=null;state.cache={};showAuth();}
+  async function signOut(){try{await state.sb?.auth.signOut();}catch(e){notify(e.message,"error");}await clearRealtime();state.session=null;state.user=null;state.cache={};showAuth();}
   async function updateInboxCount(){const r=await safe(api("notifications","inbox.list",{limit:100,unread_only:true}));if(r.ok){const n=records(r.data);const count=n.length;const c=$("notificationCount"),t=$("topNotificationDot");c.textContent=count?count:"";t.classList.toggle("show",count>0);}}
+  async function clearRealtime(){
+    if(state.realtimeRefreshTimer){clearTimeout(state.realtimeRefreshTimer);state.realtimeRefreshTimer=null;}
+    if(state.realtimeAIRefreshTimer){clearTimeout(state.realtimeAIRefreshTimer);state.realtimeAIRefreshTimer=null;}
+    const channel=state.realtimeChannel;state.realtimeChannel=null;
+    if(channel&&state.sb){try{await state.sb.removeChannel(channel);}catch(error){console.warn("Nexus Realtime cleanup",error);}}
+  }
+  function scheduleRealtimeRefresh(pages){
+    if(!pages.includes(state.currentPage))return;
+    if(state.realtimeRefreshTimer)clearTimeout(state.realtimeRefreshTimer);
+    state.realtimeRefreshTimer=setTimeout(async()=>{
+      state.realtimeRefreshTimer=null;
+      if(!state.user||!pages.includes(state.currentPage))return;
+      if(state.currentPage==="intelligence"){
+        if(state.chatBusy||!state.chatId)return;
+        if(state.realtimeAIRefreshTimer)clearTimeout(state.realtimeAIRefreshTimer);
+        state.realtimeAIRefreshTimer=setTimeout(()=>{state.realtimeAIRefreshTimer=null;if(state.currentPage==="intelligence"&&!state.chatBusy&&state.chatId)void loadAIConversation(state.chatId);},180);
+      }else{
+        await refresh();
+      }
+    },320);
+  }
+  async function setupRealtime(){
+    await clearRealtime();
+    if(!state.sb||!state.user?.id||!state.workspace?.id)return;
+    const organizationId=state.workspace.id,userId=state.user.id;
+    const channel=state.sb.channel("nexus-live-"+organizationId+"-"+userId);
+    const pagesByTable={
+      nexus_channel_messages:["communications"],
+      nexus_channels:["communications"],
+      nexus_direct_messages:["communications"],
+      nexus_notifications:["overview","notifications"],
+      tasks:["overview","projects","tasks"],
+      project_milestones:["overview","projects"],
+      product_metric_ingestion_runs:["overview","products"],
+      service_components:["overview","monitoring"],
+      service_incidents:["overview","monitoring"]
+    };
+    for(const [table,pages] of Object.entries(pagesByTable)){
+      channel
+        .on("postgres_changes",{event:"INSERT",schema:"public",table,filter:"organization_id=eq."+organizationId},()=>{if(table==="nexus_notifications")void updateInboxCount();scheduleRealtimeRefresh(pages);})
+        .on("postgres_changes",{event:"UPDATE",schema:"public",table,filter:"organization_id=eq."+organizationId},()=>{if(table==="nexus_notifications")void updateInboxCount();scheduleRealtimeRefresh(pages);});
+    }
+    const aiFilter={event:"INSERT",schema:"public",table:"nexus_ai_messages",filter:"organization_id=eq."+organizationId};
+    const aiUpdateFilter={event:"UPDATE",schema:"public",table:"nexus_ai_messages",filter:"organization_id=eq."+organizationId};
+    const conversationFilter={event:"INSERT",schema:"public",table:"nexus_ai_conversations",filter:"organization_id=eq."+organizationId};
+    const conversationUpdateFilter={event:"UPDATE",schema:"public",table:"nexus_ai_conversations",filter:"organization_id=eq."+organizationId};
+    const onAIChange=payload=>{
+      if(state.currentPage!=="intelligence"||state.chatBusy||!state.chatId)return;
+      const record=payload.new||payload.old||{};
+      if(record.owner_user_id&&record.owner_user_id!==userId)return;
+      if(record.conversation_id&&record.conversation_id!==state.chatId)return;
+      if(record.id&&record.owner_user_id&&record.conversation_id===undefined&&record.id!==state.chatId)return;
+      scheduleRealtimeRefresh(["intelligence"]);
+    };
+    channel
+      .on("postgres_changes",aiFilter,onAIChange)
+      .on("postgres_changes",aiUpdateFilter,onAIChange)
+      .on("postgres_changes",conversationFilter,onAIChange)
+      .on("postgres_changes",conversationUpdateFilter,onAIChange);
+    state.realtimeChannel=channel;
+    channel.subscribe(status=>{
+      if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")console.warn("Nexus Realtime connection status:",status);
+    });
+  }
 
   function loadingMarkup(){return `<div class="loading-shell"><div class="skeleton skeleton-title"></div><div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton skeleton-panel"></div></div>`;}
   async function navigate(page){if(!PAGE[page])page="overview";state.currentPage=page;$("app").classList.toggle("ai-mode",page==="intelligence");document.querySelectorAll(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));setPageTitle(page);$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");$("pageContent").innerHTML=loadingMarkup();
