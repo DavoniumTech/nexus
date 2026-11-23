@@ -431,7 +431,7 @@ export default {
         if (action === "finance.accounts.list") {
           if (!can("finance.view")) return denied();
           const { data,error } = await ctx.supabase.from("nexus_finance_account_balances")
-            .select("id,account_code,name,account_type,normal_balance,currency_code,description,is_system,is_active,total_debits,total_credits,current_balance")
+            .select("id,account_code,name,account_type,normal_balance,currency_code,is_system,is_active,total_debits,total_credits,current_balance")
             .eq("organization_id",organization.id).order("account_code").limit(500);
           if (error) return reply({error:"Finance accounts could not be retrieved."},500);
           return reply({success:true,accounts:data ?? []});
