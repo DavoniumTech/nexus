@@ -14,7 +14,7 @@ This repository retains the existing Supabase implementation. Work is being stag
 
 ## Migration discipline
 
-The current remote database reported no migration history at the time of the initial audit. The first tracked change is therefore additive and must not be mistaken for a complete historical baseline. Before future schema work, export and review the full current schema with the Supabase CLI (`supabase db pull`) and preserve it as a reviewed baseline migration. Do not attempt to recreate the current schema from generated TypeScript types alone.
+The current remote database reported no migration history at the time of the initial audit. There are now six applied, tracked migrations covering AI reservation hardening/capacity, assistant modes/settings, RLS policy optimisation, AI Realtime publication, core join indexes, and the RLS event-trigger ACL. These are additive changes and must not be mistaken for a complete historical baseline. Before future schema work, export and review the full current schema with the Supabase CLI (`supabase db pull`) and preserve it as a reviewed baseline migration. Do not attempt to recreate the current schema from generated TypeScript types alone.
 
 ## DVNM Intelligence capacity target
 
