@@ -16,7 +16,7 @@ APP = ROOT / "app.js"
 INDEX = ROOT / "index.html"
 
 required_migrations = [
-    "20261123200353_nexus_ai_guard_and_capacity.sql",
+    "20261123210000_nexus_ai_guard_and_capacity.sql",
     "20261123200528_nexus_ai_modes_and_extended_limits.sql",
     "20261123201433_nexus_rls_policy_performance.sql",
     "20261123203000_nexus_realtime_intelligence.sql",
