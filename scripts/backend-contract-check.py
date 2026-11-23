@@ -16,10 +16,10 @@ APP = ROOT / "app.js"
 INDEX = ROOT / "index.html"
 
 required_migrations = [
-    "20261123210000_nexus_ai_guard_and_capacity.sql",
+    "20261123200353_nexus_ai_guard_and_capacity.sql",
     "20261123200528_nexus_ai_modes_and_extended_limits.sql",
     "20261123201433_nexus_rls_policy_performance.sql",
-    "20261123203000_nexus_realtime_intelligence.sql",
+    "20261123201749_nexus_realtime_intelligence.sql",
     "20261123203521_nexus_core_join_indexes.sql",
 ]
 missing = [name for name in required_migrations if not (MIGRATIONS / name).is_file()]
