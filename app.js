@@ -110,22 +110,28 @@
   function showAuth(message="",bad=false){ $("authScreen").classList.remove("hidden");$("app").classList.add("hidden");if(message)authMessage(message,bad); }
   function applyTheme(){
     const media=window.matchMedia?.("(prefers-color-scheme: dark)");
+    const allowedThemes=["dark","black","light","system"];
+    if(!allowedThemes.includes(state.theme))state.theme="system";
     const resolved=state.theme==="system"?(media?.matches?"dark":"light"):state.theme;
-    document.documentElement.classList.toggle("light-theme",resolved==="light");
-    document.documentElement.dataset.theme=resolved;
-    document.documentElement.style.colorScheme=resolved;
+    const root=document.documentElement;
+    root.classList.toggle("light-theme",resolved==="light");
+    root.classList.toggle("black-theme",resolved==="black");
+    root.dataset.theme=resolved;
+    root.style.colorScheme=resolved==="light"?"light":"dark";
     try{localStorage.setItem("nexus_theme",state.theme);}catch(_){}
     const meta=document.querySelector('meta[name="theme-color"]');
-    if(meta)meta.setAttribute("content",resolved==="light"?"#f4f8fc":"#07111f");
+    if(meta)meta.setAttribute("content",resolved==="light"?"#f4f8fc":resolved==="black"?"#050607":"#07111f");
     const button=$("themeToggle");
     if(button){
-      button.textContent=state.theme==="system"?"◐":resolved==="light"?"☼":"☾";
-      button.setAttribute("aria-label","Appearance: "+state.theme+". Select next theme.");
-      button.title="Appearance: "+state.theme+". Select next theme.";
+      button.textContent=state.theme==="system"?"◐":resolved==="light"?"☼":resolved==="black"?"●":"☾";
+      button.setAttribute("aria-label","Appearance: "+(resolved==="black"?"Elevated Black":state.theme)+". Select next theme.");
+      button.title="Appearance: "+(resolved==="black"?"Elevated Black":state.theme)+". Select next theme.";
     }
   }
   function cycleTheme(){
-    state.theme=state.theme==="dark"?"light":state.theme==="light"?"system":"dark";
+    const themes=["dark","black","light","system"];
+    const current=themes.indexOf(state.theme);
+    state.theme=themes[(current+1+themes.length)%themes.length];
     applyTheme();
     if(state.currentPage==="settings")renderSettings();
   }
@@ -304,20 +310,72 @@
   }
 
 
+  function renderThinLineChart(series,labels,emptyMessage="No verified data is available for this period."){
+    const validSeries=(series||[]).filter(item=>Array.isArray(item.values)&&item.values.length===labels.length);
+    if(!labels?.length||!validSeries.length)return empty("No chart data",emptyMessage);
+    const allValues=validSeries.flatMap(item=>item.values.map(value=>Number(value)||0));
+    if(!allValues.length)return empty("No chart data",emptyMessage);
+    const width=960,height=220,left=12,right=12,top=16,bottom=16,plotHeight=height-top-bottom;
+    let min=Math.min(0,...allValues),max=Math.max(0,...allValues);
+    if(max===min)max=min+1;
+    const padding=(max-min)*0.1||1;min-=padding;max+=padding;
+    const xAt=index=>left+(labels.length<=1?0:index*(width-left-right)/(labels.length-1));
+    const yAt=value=>top+(max-Number(value||0))*plotHeight/(max-min);
+    const grid=[0,1,2,3].map(step=>{
+      const y=top+step*plotHeight/3;
+      return `<line class="os-chart-gridline" x1="${left}" y1="${y.toFixed(2)}" x2="${width-right}" y2="${y.toFixed(2)}"/>`;
+    }).join("");
+    const plots=validSeries.map((item,index)=>{
+      const points=item.values.map((value,i)=>[xAt(i),yAt(value)]);
+      const path=points.map((point,i)=>(i?"L":"M")+point[0].toFixed(2)+" "+point[1].toFixed(2)).join(" ");
+      const area=path+` L ${points[points.length-1][0].toFixed(2)} ${(height-bottom).toFixed(2)} L ${points[0][0].toFixed(2)} ${(height-bottom).toFixed(2)} Z`;
+      const marker=points.map((point,i)=>`<circle class="os-chart-point os-chart-series-${index}" cx="${point[0].toFixed(2)}" cy="${point[1].toFixed(2)}" r="2.4"><title>${esc(labels[i])}: ${esc(fmtNum(item.values[i]))}</title></circle>`).join("");
+      return `<path class="os-chart-area os-chart-series-${index}" d="${area}"/><path class="os-chart-line os-chart-series-${index}" d="${path}"/>${marker}`;
+    }).join("");
+    const tickCount=Math.min(6,labels.length);
+    const ticks=Array.from({length:tickCount},(_,i)=>{
+      const idx=tickCount===1?0:Math.round(i*(labels.length-1)/(tickCount-1));
+      return `<span>${esc(labels[idx])}</span>`;
+    }).join("");
+    const legend=validSeries.map((item,index)=>`<span><i class="os-chart-legend-dot os-chart-series-${index}"></i>${esc(item.name)}</span>`).join("");
+    return `<div class="os-thin-chart">
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Line chart showing ${esc(validSeries.map(x=>x.name).join(" and "))}">
+        ${grid}${plots}
+      </svg>
+      <div class="os-chart-ticks">${ticks}</div>
+      <div class="os-chart-legend">${legend}</div>
+    </div>`;
+  }
+
   async function renderAnalytics(){
     const [r,pr]=await Promise.all([safe(api("analytics","analytics.dashboard")),safe(api("analytics","overview"))]);
-    const d=r.ok?(unwrap(r.data)?.analytics||{}):{},prod=pr.ok?(unwrap(pr.data)||{}):{},daily=d.daily||[],max=Math.max(1,...daily.map(x=>Number(x.events||0)));
-    const bars=daily.filter((x,i)=>i%2===0||i===daily.length-1).map(x=>`<div class="os-chart-col" title="${esc(x.day)}"><i style="height:${Math.max(3,Number(x.events||0)/max*100)}%"></i><small>${esc(x.day.slice(5))}</small></div>`).join("");
-    const pages=(d.top_pages||[]).map(x=>`<tr><td>${esc(x.page)}</td><td>${fmtNum(x.views)}</td></tr>`);let consent={};try{consent=JSON.parse(localStorage.getItem("nexus_privacy_consent_v1")||"{}");}catch(_){}
+    const d=r.ok?(unwrap(r.data)?.analytics||{}):{},prod=pr.ok?(unwrap(pr.data)||{}):{},daily=d.daily||[];
+    const labels=daily.map(x=>String(x.day||"").slice(5));
+    const trend=renderThinLineChart([{name:"Consented events",values:daily.map(x=>Number(x.events||0))}],labels,"Usage begins after an authorised member opts in.");
+    let consent={};try{consent=JSON.parse(localStorage.getItem("nexus_privacy_consent_v1")||"{}");}catch(_){}
     let html=pageHead("analytics",`<button class="btn btn-secondary" data-act="refresh">↻ Refresh</button><button class="btn btn-primary" data-act="analytics-consent">Privacy settings</button>`,"Consent-based usage intelligence and verified product metrics.");
-    html+=`<div class="os-kpi-grid">${stat("Events · 30 days",fmtNum(d.events_30d??0),"Optional usage events","activity")}${stat("Events · 7 days",fmtNum(d.events_7d??0),"Recent product usage","activity")}${stat("Active users",fmtNum(d.active_users_30d??0),"Unique accounts in 30 days","users")}${stat("Verified metrics",fmtNum(prod.counts?.verified_non_sample_metrics??0),"Existing verified metrics","trending-up")}</div><div class="os-analytics-grid"><section class="os-surface os-chart-panel"><header><div><span class="os-eyebrow">USAGE TRENDS</span><h2>Activity · last 30 days</h2><p>Only minimised, consented events are included.</p></div></header><div class="os-chart-bars">${bars||empty("No analytics yet","Usage begins after an authorised member opts in.")}</div></section><section class="os-surface"><header><div><span class="os-eyebrow">MOST USED</span><h2>Module activity</h2></div></header>${table(["Page","Views"],pages)}</section></div><section class="os-surface os-privacy-panel"><div><span class="os-eyebrow">PRIVACY & GOVERNANCE</span><h2>Optional analytics is opt-in</h2><p>Essential authentication storage remains active. Optional analytics records module event type and timestamp only. It never records prompts, messages, form values, credentials or documents.</p></div><div class="os-privacy-status"><span class="${consent.analytics?"allowed":"disabled"}">${consent.analytics?"Analytics enabled":"Analytics disabled"}</span><button class="btn btn-secondary" data-act="analytics-consent">Change consent</button></div></section>`;
+    html+=`<div class="os-kpi-grid">${stat("Events · 30 days",fmtNum(d.events_30d??0),"Optional usage events","activity")}${stat("Events · 7 days",fmtNum(d.events_7d??0),"Recent product usage","activity")}${stat("Active users",fmtNum(d.active_users_30d??0),"Unique accounts in 30 days","users")}${stat("Verified metrics",fmtNum(prod.counts?.verified_non_sample_metrics??0),"Existing verified metrics","trending-up")}</div>
+    <div class="os-analytics-grid">
+      <section class="os-surface os-chart-panel"><header><div><span class="os-eyebrow">USAGE TRENDS</span><h2>Activity · last 30 days</h2><p>Thin trend view · minimised, consented events only</p></div></header>${trend}</section>
+      <section class="os-surface"><header><div><span class="os-eyebrow">MOST USED</span><h2>Module activity</h2></div></header>${table(["Page","Views"],(d.top_pages||[]).map(x=>`<tr><td>${esc(x.page)}</td><td>${fmtNum(x.views)}</td></tr>`))}</section>
+    </div>
+    <section class="os-surface os-privacy-panel"><div><span class="os-eyebrow">PRIVACY & GOVERNANCE</span><h2>Optional analytics is opt-in</h2><p>Essential authentication storage remains active. Optional analytics records module event type and timestamp only. It never records prompts, messages, form values, credentials or documents.</p></div><div class="os-privacy-status"><span class="${consent.analytics?"allowed":"disabled"}">${consent.analytics?"Analytics enabled":"Analytics disabled"}</span><button class="btn btn-secondary" data-act="analytics-consent">Change consent</button></div></section>`;
     $("#pageContent").innerHTML=html;
   }
+
   async function renderFinance(){
-    const [o,a,e,b]=await Promise.all([safe(api("analytics","finance.overview")),safe(api("analytics","finance.accounts.list")),safe(api("analytics","finance.entries.list")),safe(api("analytics","finance.budgets.list"))]);
+    const [o,a,e,b,trendR]=await Promise.all([
+      safe(api("analytics","finance.overview")),
+      safe(api("analytics","finance.accounts.list")),
+      safe(api("analytics","finance.entries.list")),
+      safe(api("analytics","finance.budgets.list")),
+      safe(api("analytics","finance.analytics"))
+    ]);
     const fd=o.ok?(unwrap(o.data)?.finance||{}):{},accounts=a.ok?(unwrap(a.data)?.accounts||[]):[],entries=e.ok?(unwrap(e.data)?.entries||[]):[],budgets=b.ok?(unwrap(b.data)?.budgets||[]):[];
-    state.cache.finance={finance:fd,accounts,entries,budgets};const canA=!!state.permissionMap["finance.accounts.manage"],canE=!!state.permissionMap["finance.entries.manage"],canB=!!state.permissionMap["finance.budgets.manage"];
-    const tab=state.financeTab||"overview",tabs=[["overview","Overview"],["accounts","Accounts"],["journal","Journal"],["budgets","Budgets"]];
+    const analytics=trendR.ok?(unwrap(trendR.data)?.analytics||{}):{};
+    state.cache.finance={finance:fd,accounts,entries,budgets,analytics};
+    const canA=!!state.permissionMap["finance.accounts.manage"],canE=!!state.permissionMap["finance.entries.manage"],canB=!!state.permissionMap["finance.budgets.manage"];
+    const tab=state.financeTab||"overview",tabs=[["overview","Overview"],["analytics","Analytics"],["accounts","Accounts"],["journal","Journal"],["budgets","Budgets"]];
     const tabBar=`<div class="os-module-tabs">${tabs.map(x=>`<button class="${tab===x[0]?"active":""}" data-finance-tab="${x[0]}">${x[1]}</button>`).join("")}</div>`;
     const cash=accounts.filter(x=>x.account_type==="asset"),curr=[...new Set(cash.map(x=>x.currency_code))],money=(n,c)=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c,maximumFractionDigits:2}).format(Number(n||0));}catch(_){return c+" "+fmtNum(n);}};
     const totals=curr.map(c=>stat("Assets · "+c,money(cash.filter(x=>x.currency_code===c).reduce((s,x)=>s+Number(x.current_balance||0),0),c),"Posted balances","wallet")).join("")||stat("Asset balances","—","No posted balances","wallet");
@@ -326,13 +384,40 @@
     const br=budgets.map(x=>`<tr><td><b>${esc(x.name)}</b><small>${fmtDate(x.period_start)} – ${fmtDate(x.period_end)}</small></td><td>${money(x.amount,x.currency_code)}</td><td>${pill(x.status)}</td><td>${canB&&x.status!=="archived"?('<button class="btn btn-small btn-secondary" data-act="finance-budget-state" data-id="'+esc(x.id)+'" data-status="'+(x.status==="active"?"paused":"active")+'">'+(x.status==="active"?"Pause":"Resume")+'</button><button class="btn btn-small btn-quiet" data-act="finance-budget-state" data-id="'+esc(x.id)+'" data-status="archived">Archive</button>'):pill(x.status)}</td></tr>`);
     const addA=canA?'<button class="btn btn-primary" data-act="finance-account-create">＋ New account</button>':"",addE=canE?'<button class="btn btn-primary" data-act="finance-entry-create">＋ Record entry</button>':"",addB=canB?'<button class="btn btn-primary" data-act="finance-budget-create">＋ New budget</button>':"";
     let body="";
-    if(tab==="overview")body=`<div class="os-kpi-grid">${totals}${stat("Accounts",fmtNum(accounts.length),"Chart of accounts","list-tree")}${stat("Journal entries",fmtNum(entries.length),"Ledger records","book-open")}${stat("Active budgets",fmtNum(budgets.filter(x=>x.status==="active").length),"Budget register","target")}</div><div class="os-lower-grid"><section class="os-surface"><header><div><span class="os-eyebrow">GENERAL LEDGER</span><h2>Latest entries</h2></div><button class="btn btn-quiet" data-finance-tab="journal">Open journal ↗</button></header>${table(["Date","Description","Currency","Status","Posted"],er.slice(0,8))}</section><section class="os-surface"><header><div><span class="os-eyebrow">PLANNING</span><h2>Budget register</h2></div><button class="btn btn-quiet" data-finance-tab="budgets">All budgets ↗</button></header>${table(["Budget","Amount","Status",""],br.slice(0,8))}</section></div><p class="os-disclaimer">Nexus finance is an internal ledger, not a bank connection. Posted balances are grouped by currency. No sample transactions have been created.</p>`;
-    else if(tab==="accounts")body=`<section class="os-surface"><header><div><span class="os-eyebrow">CHART OF ACCOUNTS</span><h2>Organisation accounts</h2></div>${addA}</header>${table(["Account","Type","Currency","Balance","Status"],ar)}</section>`;
-    else if(tab==="journal")body=`<section class="os-surface"><header><div><span class="os-eyebrow">DOUBLE-ENTRY LEDGER</span><h2>Journal register</h2><p>Entries post only when debit and credit totals balance.</p></div>${addE}</header>${table(["Date","Reference / description","Currency","Status","Posted"],er)}</section>`;
-    else body=`<section class="os-surface"><header><div><span class="os-eyebrow">BUDGET PLANNING</span><h2>Budget register</h2></div>${addB}</header>${table(["Budget","Amount","Status",""],br)}</section>`;
+    if(tab==="overview"){
+      body=`<div class="os-kpi-grid">${totals}${stat("Accounts",fmtNum(accounts.length),"Chart of accounts","list-tree")}${stat("Journal entries",fmtNum(entries.length),"Ledger records","book-open")}${stat("Active budgets",fmtNum(budgets.filter(x=>x.status==="active").length),"Budget register","target")}</div>
+      <div class="os-lower-grid"><section class="os-surface"><header><div><span class="os-eyebrow">GENERAL LEDGER</span><h2>Latest entries</h2></div><button class="btn btn-quiet" data-finance-tab="journal">Open journal ↗</button></header>${table(["Date","Description","Currency","Status","Posted"],er.slice(0,8))}</section>
+      <section class="os-surface"><header><div><span class="os-eyebrow">PLANNING</span><h2>Budget register</h2></div><button class="btn btn-quiet" data-finance-tab="budgets">All budgets ↗</button></header>${table(["Budget","Amount","Status",""],br.slice(0,8))}</section></div>
+      <p class="os-disclaimer">Nexus finance is an internal ledger, not a bank connection. Balances are grouped by currency. No sample transactions have been created.</p>`;
+    }else if(tab==="analytics"){
+      const currencies=analytics.currencies||[];
+      const charts=currencies.map(item=>{
+        const months=item.monthly||[];
+        const chart=renderThinLineChart([
+          {name:"Revenue",values:months.map(x=>Number(x.revenue||0))},
+          {name:"Expenses",values:months.map(x=>Number(x.expenses||0))}
+        ],months.map(x=>x.label),"There are no posted income or expense lines for this currency.");
+        const last=months[months.length-1]||{};
+        return `<section class="os-surface os-finance-chart-card">
+          <header><div><span class="os-eyebrow">POSTED LEDGER · ${esc(item.currency_code)}</span><h2>Revenue & expenses</h2><p>Monthly account movements · last 12 months</p></div><span class="os-finance-currency">${esc(item.currency_code)}</span></header>
+          <div class="os-finance-chart-stats"><span>Latest month revenue <b>${money(last.revenue,item.currency_code)}</b></span><span>Latest month expenses <b>${money(last.expenses,item.currency_code)}</b></span></div>
+          ${chart}
+        </section>`;
+      }).join("");
+      body=`<div class="os-kpi-grid">${stat("Posted entries in period",fmtNum(analytics.posted_entry_count??0),"Last 12 months","book-open")}${stat("Currencies",fmtNum(currencies.length),"Reported separately","coins")}${stat("Income-statement lines",fmtNum(currencies.reduce((sum,x)=>sum+Number(x.line_count||0),0)),"Posted revenue and expense lines","activity")}${stat("Coverage",analytics.sampling_limited?"Record cap reached":"Complete returned set",analytics.sampling_limited?"More than 5,000 entries may exist":"Server query returned all matching entries","shield-check")}</div>
+      <div class="os-finance-chart-grid">${charts||empty("No posted financial activity","No posted revenue or expense journal lines were found in the last 12 months. Create and post balanced entries to populate this chart. No sample values are shown.")}</div>
+      <p class="os-disclaimer">Only posted double-entry journal lines are included. Revenue and expenses are grouped by account type and currency. Draft, cancelled and unposted entries are excluded; different currencies are never added together.</p>`;
+    }else if(tab==="accounts"){
+      body=`<section class="os-surface"><header><div><span class="os-eyebrow">CHART OF ACCOUNTS</span><h2>Organisation accounts</h2></div>${addA}</header>${table(["Account","Type","Currency","Balance","Status"],ar)}</section>`;
+    }else if(tab==="journal"){
+      body=`<section class="os-surface"><header><div><span class="os-eyebrow">DOUBLE-ENTRY LEDGER</span><h2>Journal register</h2><p>Entries post only when debit and credit totals balance.</p></div>${addE}</header>${table(["Date","Reference / description","Currency","Status","Posted"],er)}</section>`;
+    }else{
+      body=`<section class="os-surface"><header><div><span class="os-eyebrow">BUDGET PLANNING</span><h2>Budget register</h2></div>${addB}</header>${table(["Budget","Amount","Status",""],br)}</section>`;
+    }
     let html=pageHead("finance",`<button class="btn btn-secondary" data-act="refresh">↻ Refresh</button>${tab==="overview"?addE:""}`,"Finance operations with chart of accounts, balanced journal and budgets.")+tabBar+body;
     $("#pageContent").innerHTML=html;
   }
+
   function createFinanceAccount(){openForm({title:"Create finance account",description:"Add an organisation-scoped account.",fields:[{name:"account_code",label:"Account code",required:true,max:24},{name:"name",label:"Account name",required:true,max:120},{name:"account_type",label:"Account type",type:"select",required:true,options:["asset","liability","equity","revenue","expense"].map(x=>[x,x])},{name:"normal_balance",label:"Normal balance",type:"select",required:true,options:[["debit","Debit"],["credit","Credit"]]},{name:"currency_code",label:"Currency code",value:"NGN",required:true,max:3},{name:"description",label:"Description",type:"textarea",max:1000,span:2}],submitLabel:"Create account",onSubmit:async v=>{await api("analytics","finance.accounts.create",v);await closeModal();state.financeTab="accounts";notify("Finance account created.","success");await renderFinance();}});}
   function createFinanceEntry(){
     const accounts=(state.cache.finance?.accounts||[]).filter(x=>x.is_active),curr=[...new Set(accounts.map(x=>x.currency_code))],currency=curr.includes("NGN")?"NGN":curr[0]||"NGN",opts=accounts.filter(x=>x.currency_code===currency).map(x=>[x.id,x.account_code+" · "+x.name]);
@@ -576,12 +661,12 @@
     const canManage=state.permissionMap["intelligence.manage"]===true||policy.can_manage_settings===true,maxChars=Number(policy.max_message_chars||10000);
     const providerReady=health.gemini_configured===true&&health.ledger_configured===true;
     const mode=state.chatMode==="general"?"General Assistant":"Company Intelligence";
-    const threads=conversations.map(c=>`<div class="ai-thread-wrap"><button class="ai-thread ${c.id===state.chatId?"active":""}" data-ai-conversation="${esc(c.id)}"><span class="ai-thread-glyph">✦</span><span><b>${esc(c.title||"New conversation")}</b><small>${c.assistant_mode==="company"?"Company Intelligence":"General Assistant"} · ${fmtDate(c.last_message_at||c.updated_at||c.created_at)}</small></span></button><button class="icon-button tiny ai-thread-menu" data-act="ai-manage-conversation" data-id="${esc(c.id)}" aria-label="Manage conversation">···</button></div>`).join("");
+    const threads=conversations.map(c=>`<div class="ai-thread-wrap"><button class="ai-thread ${c.id===state.chatId?"active":""}" data-ai-conversation="${esc(c.id)}"><span class="ai-thread-glyph">✦</span><span><b>${esc(c.title||"New conversation")}</b><small>${c.assistant_mode==="company"?"Company Intelligence":"General Assistant"} · ${fmtDate(c.last_message_at||c.updated_at||c.created_at)}</small></span></button><button class="icon-button tiny ai-thread-menu" data-act="ai-manage-conversation" data-id="${esc(c.id)}" aria-label="Manage conversation" title="Rename, archive, restore or delete">···</button></div>`).join("");
     const prompts=state.chatMode==="general"?[["Explain a difficult topic in simple steps, with examples.","Explain something"],["Help me plan my priorities for today.","Plan my day"],["Improve the clarity and structure of this writing.","Improve my writing"],["Help me understand a programming problem.","Learn and code"]]:[["Give me an executive summary of current projects, tasks and delivery risks.","Executive delivery summary"],["Summarise our latest verified product metrics.","Product performance"],["What are our current open incidents and service concerns?","Operational health"],["Review company objectives and key results.","Objectives and key results"],["Summarise authorised finance balances and recent ledger activity.","Finance overview"]];
     const welcome=`<div class="ai-welcome-state"><div class="ai-welcome-mark">✦</div><h2>${state.chatMode==="general"?"What can I help you work through?":"Ask about Davonium."}</h2><p>${state.chatMode==="general"?"Learning, planning, writing, analysis and code. General mode does not access private company records.":"Answers use company records available to your signed-in role. The assistant is read-only."}</p><div class="ai-prompt-grid">${prompts.map(p=>`<button type="button" data-ai-prompt="${esc(p[0])}">${esc(p[1])}<span>↗</span></button>`).join("")}</div></div>`;
     const warning=!enabled?`<div class="ai-service-notice"><span class="ai-service-icon">!</span><div><b>DVNM service is not yet enabled</b><p>${providerReady?"Provider and ledger credentials are present. Owner approval of provider privacy and billing disclosures is still required.":"A provider or ledger credential is missing. Configure it in Supabase Edge Function secrets; never paste it into this page."}</p></div>${canManage?`<button class="btn btn-secondary btn-small" data-act="ai-policy-enable">Review and enable</button>`:""}</div>`:"";
     const modeSelect=`<select id="aiModeSelect" class="ai-mode-select" aria-label="DVNM Intelligence mode"><option value="general" ${state.chatMode==="general"?"selected":""}>General Assistant</option><option value="company" ${state.chatMode==="company"?"selected":""}>Company Intelligence</option></select>`;
-    let html=`<section class="ai-os"><header class="ai-os-top"><div class="ai-os-brand"><button class="icon-button" data-page="overview" title="Back to Nexus">‹</button><span class="ai-brand-symbol">✦</span><div><b>DVNM Intelligence</b><small>DAVONIUM NEXUS AI</small></div></div><div class="ai-os-top-actions">${modeSelect}<button class="btn btn-secondary" data-act="ai-new">＋ New chat</button>${canManage?`<button class="icon-button" data-act="ai-manage-limits" title="AI capacity controls">⚙</button>`:""}</div></header>
+    let html=`<section class="ai-os"><header class="ai-os-top"><div class="ai-os-brand"><button class="icon-button" data-page="overview" title="Back to Nexus">‹</button><img class="ai-brand-logo" src="./assets/branding/davonium-d-icon.webp" alt="Davonium Technologies" width="36" height="36"><div><b>DVNM Intelligence</b><small>DAVONIUM NEXUS AI</small></div></div><div class="ai-os-top-actions">${modeSelect}<button class="btn btn-secondary" data-act="ai-new">＋ New chat</button>${canManage?`<button class="icon-button" data-act="ai-manage-limits" title="AI capacity controls">⚙</button>`:""}</div></header>
     <div class="ai-os-body"><aside class="ai-history"><div class="ai-history-title"><span>RECENT CONVERSATIONS</span><button class="icon-button tiny" data-act="ai-new">＋</button></div><div class="ai-history-list">${threads||`<div class="ai-history-empty">Your private conversations will appear here.</div>`}</div><div class="ai-history-foot"><span class="ai-status-dot ${enabled?"ready":"waiting"}"></span><span>${enabled?"AI service available":"AI service awaiting setup"}</span></div></aside>
     <main class="ai-chat-stage"><header class="ai-chat-head"><div><div class="os-eyebrow">${state.chatMode==="general"?"GENERAL ASSISTANT":"COMPANY INTELLIGENCE"}</div><h1 id="aiConversationHeading">${esc(selected?.title||mode)}</h1><p>${state.chatMode==="general"?"Everyday intelligence · no company data access":"Role-authorised Nexus records · read-only"}</p></div><div class="ai-head-tools"><span class="ai-mode-pill">${mode}</span><span class="ai-status ${enabled?"on":"off"}"><i></i>${enabled?"Available":"Paused"}</span></div></header>${warning}
     <div class="ai-messages" id="aiMessages">${state.chatId?loadingMarkup():welcome}</div>
@@ -661,7 +746,39 @@
       }
     });
   }
-  function manageAIConversation(id){const c=(state.cache.intelligence?.conversations||[]).find(x=>x.id===id)||{};openForm({title:"Manage DVNM conversation",description:"Rename, archive, restore or delete this conversation. Deletion removes your conversation history and cannot be undone.",fields:[{name:"title",label:"Conversation title",value:c.title||"New conversation",required:true,max:120},{name:"operation",label:"Action",type:"select",required:true,options:[["rename","Rename"],[c.status==="archived"?"unarchive":"archive",c.status==="archived"?"Restore to active":"Archive"],["delete","Delete permanently"]]}],submitLabel:"Apply",onSubmit:async v=>{if(v.operation==="delete"&&!confirm("Permanently delete this DVNM conversation and its saved history?"))return;if(v.operation==="rename")await api("intelligence","conversation.rename",{conversation_id:id,title:v.title});else await api("intelligence",`conversation.${v.operation}`,{conversation_id:id});if(state.chatId===id)state.chatId=null;notify(v.operation==="delete"?"Conversation deleted.":`Conversation ${v.operation}d.`,"success");await closeModal();await renderIntelligence();}});}
+  function manageAIConversation(id){
+    const c=(state.cache.intelligence?.conversations||[]).find(x=>x.id===id)||{};
+    const isArchived=c.status==="archived";
+    openForm({
+      title:"Manage DVNM conversation",
+      description:"Rename your chat, archive it, restore it or permanently delete its saved history.",
+      fields:[
+        {name:"title",label:"Conversation title",value:c.title||"New conversation",required:true,max:120},
+        {name:"operation",label:"Action",type:"select",required:true,value:"rename",options:[
+          ["rename","Rename conversation"],
+          [isArchived?"unarchive":"archive",isArchived?"Restore to active chats":"Archive conversation"],
+          ["delete","Delete permanently"]
+        ]}
+      ],
+      submitLabel:"Apply changes",
+      onSubmit:async v=>{
+        if(v.operation==="delete"&&!confirm("Permanently delete this DVNM conversation and its saved history? This cannot be undone.")){
+          throw new Error("Deletion cancelled. No changes were made.");
+        }
+        if(v.operation==="rename"){
+          await api("intelligence","conversation.rename",{conversation_id:id,title:v.title});
+        }else{
+          await api("intelligence",`conversation.${v.operation}`,{conversation_id:id});
+          if(state.chatId===id)state.chatId=v.operation==="unarchive"?id:null;
+        }
+        const labels={rename:"renamed",archive:"archived",unarchive:"restored",delete:"deleted"};
+        notify("Conversation "+labels[v.operation]+".","success");
+        await closeModal();
+        await renderIntelligence();
+      }
+    });
+  }
+
 
   async function sendAIMessage(event){event?.preventDefault();if(state.chatBusy)return;const input=$("aiMessageInput"),message=input?.value.trim();if(!message)return;const maxChars=Number(state.cache.intelligence?.policy?.max_message_chars||10000);if(message.length>maxChars){notify(`Keep each message within ${fmtNum(maxChars)} characters. The server applies the same limit.`,"error");return;}
     const send=$("aiSend"),host=$("aiMessages");state.chatBusy=true;if(send){send.disabled=true;send.textContent="Analysing…";}if(host){host.querySelector(".chat-welcome")?.remove();host.insertAdjacentHTML("beforeend",`<article class="ai-message user"><div class="ai-message-head"><b>You</b><span>Now</span></div><div class="ai-message-content">${renderMarkdownSafe(message)}</div></article><div class="ai-thinking" id="aiThinking"><i></i><i></i><i></i><span>${state.chatMode==="general"?"Preparing your response…":"Reviewing authorised Nexus records…"}</span></div>`);host.scrollTop=host.scrollHeight;}input.value="";
@@ -671,7 +788,7 @@
     }catch(e){$("aiThinking")?.remove();if(host)host.insertAdjacentHTML("beforeend",`<div class="notice error">${esc(e.message)}<br><small>The server may have blocked the request because of service policy, data permissions, provider availability or usage limits. No answer was invented.</small></div>`);notify(e.message,"error");}
     finally{state.chatBusy=false;if(send){send.disabled=!state.cache.intelligence?.policy?.enabled;send.innerHTML='Ask DVNM <span>↗</span>';}await refreshAIUsageQuietly();}
   }
-  async function updateAIConversationTitleIfNeeded(id,message){try{const conv=(state.cache.intelligence?.conversations||[]).find(x=>x.id===id);if(conv&&conv.title==="New conversation")await api("intelligence","conversation.rename",{conversation_id:id,title:message.replace(/\s+/g," ").slice(0,76)});}catch(_){} }
+  async function updateAIConversationTitleIfNeeded(id,message){try{const conv=(state.cache.intelligence?.conversations||[]).find(x=>x.id===id);if(conv&&conv.title==="New conversation"){const title=message.replace(/\s+/g," ").slice(0,76);await api("intelligence","conversation.rename",{conversation_id:id,title});conv.title=title;const heading=$("aiConversationHeading");if(heading&&state.chatId===id)heading.textContent=title;}}catch(_){} }
   async function refreshAIUsageQuietly(){const r=await safe(api("intelligence","usage.summary"));if(r.ok){const u=unwrap(r.data)?.usage;if(u&&state.cache.intelligence){state.cache.intelligence.usage=u;const daily=$("aiDailyRequestUsage"),burst=$("aiBurstUsage"),output=$("aiDailyOutputUsage");if(daily)daily.textContent=`${fmtNum(u.requests_today??0)} / ${fmtNum(u.requests_per_day_limit??"—")}`;if(burst)burst.textContent=`${fmtNum(u.requests_last_5m??0)} / ${fmtNum(u.requests_per_5m_limit??"—")}`;if(output)output.textContent=`${fmtNum(u.tokens_today??0)} / ${fmtNum(u.tokens_per_day_limit??"—")}`;}}}
   async function changeAIPolicy(enable){
     const policy=state.cache.intelligence?.policy||{};
@@ -753,8 +870,13 @@
   }
   async function renderSettings(){const c=cfg();const [profileR,sessionR]=await Promise.all([safe(api("workspace","overview")),safe(api("audit","session.assurance"))]);const profile=unwrap(profileR.data)||{},assurance=unwrap(sessionR.data)||{};
     let html=pageHead("settings",`<button class="btn btn-primary" data-act="open-connection">Connection settings</button>`,"Manage this browser connection and review your Davonium Nexus organisation identity.");
-    html+=`<div class="grid metric-grid">${stat("Nexus organisation",state.workspace.name||"Davonium Technologies",state.workspace.slug||WORKSPACE_SLUG,"◈")}${stat("Your role",state.role,"Resolved from active Nexus membership","♙")}${stat("Authentication","Supabase Auth",state.user?.email||"Signed in","✓")}${stat("Theme",state.theme==="system"?"System":state.theme==="light"?"Light":"Dark","Saved in this browser","◐")}</div>`;
-    html+=`<div class="content-grid"><div>${panel("Nexus organisation identity","Identity resolved from the existing Nexus session Edge Function.",`<div class="property-grid">${property("Organisation",state.workspace.name||"Davonium Technologies")}${property("Slug",state.workspace.slug||WORKSPACE_SLUG)}${property("Nexus organisation ID",state.workspace.id||"Not returned")}${property("Membership role",state.role)}${property("Membership status",state.workspace.membership_status||state.workspace.status||"active")}${property("Account email",state.user?.email||"—")}</div>`)}${panel("Connection", "This browser calls your existing Supabase project directly using the signed-in user's access token.",`<div class="property-grid">${property("Project URL",c.url)}${property("Project reference",PROJECT_REF)}${property("Key type","Publishable / anon only")}${property("Session",state.session?"Authenticated":"Not authenticated")}</div><div class="toolbar"><button class="btn btn-secondary" data-act="open-connection">Edit connection</button><button class="btn btn-secondary" data-act="connection-check">Verify session</button></div>`)}</div><div>${panel("Security model","The frontend is not trusted with server credentials.",`<div class="capability-list"><div><span>Service-role key in browser</span>${pill("never")}</div><div><span>Gemini API key in browser</span>${pill("never")}</div><div><span>AI ledger key in browser</span>${pill("never")}</div><div><span>Database writes</span>${pill("Edge Function / RLS")}</div><div><span>Private documents</span>${pill("signed access only")}</div></div>`)}${panel("Appearance","Choose a theme or follow this device's appearance.",`<div class="settings-block"><h3>Interface theme</h3><p>Your choice is saved in this browser. System follows the device automatically.</p><div class="button-row"><button class="btn ${state.theme==="dark"?"btn-primary":"btn-secondary"}" data-act="theme-dark">Dark</button><button class="btn ${state.theme==="light"?"btn-primary":"btn-secondary"}" data-act="theme-light">Light</button><button class="btn ${state.theme==="system"?"btn-primary":"btn-secondary"}" data-act="theme-system">System</button></div></div>`)}${panel("Session assurance","Current Supabase MFA assurance.",`<div class="property-grid">${property("Level",assurance.current_level||"Unknown")}${property("MFA verified",assurance.mfa_verified_for_this_session?"Yes":"No")}</div><button class="btn btn-secondary btn-small" data-page="security">Open Security & audit</button>`)}</div></div>`;
+    html+=`<div class="grid metric-grid">${stat("Nexus organisation",state.workspace.name||"Davonium Technologies",state.workspace.slug||WORKSPACE_SLUG,"◈")}${stat("Your role",state.role,"Resolved from active Nexus membership","♙")}${stat("Authentication","Supabase Auth",state.user?.email||"Signed in","✓")}${stat("Theme",state.theme==="black"?"Elevated Black":state.theme==="system"?"System":state.theme==="light"?"Light":"Dark","Saved in this browser","◐")}</div>`;
+    html+=`<div class="content-grid"><div>${panel("Nexus organisation identity","Identity resolved from the existing Nexus session Edge Function.",`<div class="property-grid">${property("Organisation",state.workspace.name||"Davonium Technologies")}${property("Slug",state.workspace.slug||WORKSPACE_SLUG)}${property("Nexus organisation ID",state.workspace.id||"Not returned")}${property("Membership role",state.role)}${property("Membership status",state.workspace.membership_status||state.workspace.status||"active")}${property("Account email",state.user?.email||"—")}</div>`)}${panel("Connection", "This browser calls your existing Supabase project directly using the signed-in user's access token.",`<div class="property-grid">${property("Project URL",c.url)}${property("Project reference",PROJECT_REF)}${property("Key type","Publishable / anon only")}${property("Session",state.session?"Authenticated":"Not authenticated")}</div><div class="toolbar"><button class="btn btn-secondary" data-act="open-connection">Edit connection</button><button class="btn btn-secondary" data-act="connection-check">Verify session</button></div>`)}</div><div>${panel("Security model","The frontend is not trusted with server credentials.",`<div class="capability-list"><div><span>Service-role key in browser</span>${pill("never")}</div><div><span>Gemini API key in browser</span>${pill("never")}</div><div><span>AI ledger key in browser</span>${pill("never")}</div><div><span>Database writes</span>${pill("Edge Function / RLS")}</div><div><span>Private documents</span>${pill("signed access only")}</div></div>`)}${panel("Appearance","Choose a theme or follow this device's appearance.",`<div class="settings-block"><h3>Interface theme</h3><p>Your choice is saved in this browser. System follows the device automatically.</p><div class="button-row theme-choice-row">
+<button class="btn ${state.theme==="dark"?"btn-primary":"btn-secondary"}" data-act="theme-dark">Dark · Navy</button>
+<button class="btn ${state.theme==="black"?"btn-primary":"btn-secondary"}" data-act="theme-black">Elevated Black</button>
+<button class="btn ${state.theme==="light"?"btn-primary":"btn-secondary"}" data-act="theme-light">Light</button>
+<button class="btn ${state.theme==="system"?"btn-primary":"btn-secondary"}" data-act="theme-system">System</button>
+</div></div>`)}${panel("Session assurance","Current Supabase MFA assurance.",`<div class="property-grid">${property("Level",assurance.current_level||"Unknown")}${property("MFA verified",assurance.mfa_verified_for_this_session?"Yes":"No")}</div><button class="btn btn-secondary btn-small" data-page="security">Open Security & audit</button>`)}</div></div>`;
     $("pageContent").innerHTML=html;
   }
 
@@ -814,7 +936,10 @@
         case "edit-delivery-settings":editDeliverySettings();break;case "mark-read":await markRead(id);break;case "mark-all-read":await markAllRead();break;
         case "go-ai":await navigate("intelligence");break;case "ai-refresh":await renderIntelligence();break;case "create-incident":createIncident();break;case "edit-incident":editIncident(id);break;case "edit-component":editComponent(id);break;case "ai-new":await createAIConversation();break;case "ai-manage-conversation":manageAIConversation(id);break;case "ai-manage-limits":manageAILimits();break;case "ai-policy-enable":await changeAIPolicy(true);break;case "ai-policy-disable":await changeAIPolicy(false);break;
         case "open-connection":openSetup(false);break;case "connection-check":{const d=await edge("session",{});notify(`Session verified · ${d.identity?.email||state.user?.email||"authenticated"}.`,"success");break;}
-        case "theme-dark":state.theme="dark";applyTheme();await renderSettings();break;case "theme-light":state.theme="light";applyTheme();await renderSettings();break;case "theme-system":state.theme="system";applyTheme();await renderSettings();break;
+        case "theme-dark":state.theme="dark";applyTheme();await renderSettings();break;
+        case "theme-black":state.theme="black";applyTheme();await renderSettings();break;
+        case "theme-light":state.theme="light";applyTheme();await renderSettings();break;
+        case "theme-system":state.theme="system";applyTheme();await renderSettings();break;
         default:notify(`This action is not available: ${act}`,"error");
       }
     }catch(e){notify(e.message||"The action could not be completed.","error");}
