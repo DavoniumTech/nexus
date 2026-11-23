@@ -51,8 +51,13 @@ for feature in ("renderAnalytics", "renderFinance", "renderIntelligence", "rende
     require(feature in app, f"frontend feature missing {feature}")
 for key in ("analytics:renderAnalytics", "finance:renderFinance"):
     require(key in app, f"frontend page router missing {key}")
-for action in ("finance.entries.create", "finance.budgets.create", "analytics.dashboard"):
-    require(action in app, f"frontend action missing {action}")
+for action in ("finance.entries.create", "finance.budgets.create", "analytics.dashboard", "finance.analytics"):
+    require(action in (app + analytics), f"finance/analytics action missing {action}")
+require("renderThinLineChart" in app, "thin SVG analytics renderer is missing")
+require("theme-black" in app and "black-theme" in css, "Elevated Black theme is missing")
+require("ai-brand-logo" in app and "./assets/branding/davonium-d-icon.webp" in app, "DVNM Intelligence must use the official Davonium mark")
+require("conversation.rename" in app and "conversation.archive" in app and "conversation.unarchive" in app and "conversation.delete" in app, "DVNM conversation management actions are missing")
+require("COMPANY_GREETING" in intelligence and "buildCompanyGreetingInstruction" in intelligence and "companyDataRequired" in intelligence, "Company Intelligence greeting flow is missing")
 
 for control in ("cookieConsent", "cookieAcceptAll", "cookieReject", "cookieCustomize", "manifest.webmanifest"):
     require(control in html, f"HTML app shell missing {control}")
