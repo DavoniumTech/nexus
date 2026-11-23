@@ -879,3 +879,173 @@ html,body{width:100%;height:100%;min-height:100%;overflow:hidden;overscroll-beha
   .auth-card{padding:18px}
   .auth-foot{margin-top:10px;padding-top:9px}
 }
+
+
+/* --------------------------------------------------------------------------
+   DAVONIUM NEXUS — refined spacing, quiet line analytics and black appearance
+   -------------------------------------------------------------------------- */
+
+/* Give every operating surface its own breathing room and clear silhouette. */
+.os-command-centre{gap:25px;padding:4px 0 22px}
+.os-kpi-grid{gap:16px}
+.os-kpi{
+  min-height:112px;padding:19px 20px;border-radius:18px;
+  border-color:var(--line-strong);
+  box-shadow:0 8px 28px rgba(0,0,0,.075);
+}
+.os-module-grid{gap:14px}
+.os-module-card{
+  min-height:94px;padding:15px 16px;column-gap:13px;
+  border-radius:16px;border-color:var(--line-strong);
+  box-shadow:0 7px 22px rgba(0,0,0,.065);
+}
+.os-module-icon{width:42px;height:42px;border-radius:13px}
+.os-module-copy{gap:5px}
+.os-module-copy b{font-size:13px;line-height:1.35}
+.os-module-copy small{font-size:10px;line-height:1.4;white-space:normal}
+.os-module-card>strong{font-size:16px}
+.os-lower-grid,.os-analytics-grid{gap:18px;margin-block:18px}
+.os-surface{
+  padding:20px;border-radius:19px;
+  border-color:var(--line-strong);
+  box-shadow:0 9px 30px rgba(0,0,0,.065);
+}
+.os-surface>header{margin-bottom:17px;gap:15px}
+.os-surface>header h2{font-size:17px}
+.os-kpi:hover,.os-module-card:hover{transform:translateY(-2px);box-shadow:0 13px 34px rgba(0,0,0,.11)}
+.theme-choice-row{gap:9px}
+.theme-choice-row .btn{min-width:116px;justify-content:center}
+
+/* The conversation controls remain discoverable on touch screens too. */
+.ai-brand-logo{
+  display:block;width:36px;height:36px;flex:0 0 36px;
+  object-fit:contain;border-radius:10px;
+  border:1px solid rgba(102,195,224,.22);
+  background:rgba(255,255,255,.035);
+}
+.ai-thread-wrap{gap:6px;margin-bottom:7px}
+.ai-thread{min-height:58px;border-radius:12px}
+.ai-thread-menu{display:grid!important;opacity:.78;flex:0 0 30px}
+.ai-thread-menu:hover,.ai-thread-menu:focus-visible{opacity:1;background:var(--surface-3);color:var(--text)}
+.ai-history-list{padding:12px 10px}
+.ai-thread b{font-size:11px;max-width:190px}
+.ai-thread small{font-size:9px}
+
+/* Analytics use very thin translucent line paths, never thick bars. */
+.os-thin-chart{width:100%;min-width:0;padding:7px 2px 2px}
+.os-thin-chart svg{display:block;width:100%;height:190px;overflow:visible}
+.os-chart-gridline{stroke:var(--line-strong);stroke-width:1;stroke-dasharray:2 7;vector-effect:non-scaling-stroke}
+.os-chart-line{
+  fill:none;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.os-chart-area{stroke:none;opacity:.10}
+.os-chart-point{stroke:var(--surface);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.os-chart-series-0.os-chart-line{stroke:#48cfe7}
+.os-chart-series-0.os-chart-area{fill:#48cfe7}
+.os-chart-series-0.os-chart-point{fill:#48cfe7}
+.os-chart-series-1.os-chart-line{stroke:#8e9cff}
+.os-chart-series-1.os-chart-area{fill:#8e9cff}
+.os-chart-series-1.os-chart-point{fill:#8e9cff}
+.os-chart-ticks{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;margin:5px 3px 0;color:var(--muted-2);font-size:9px}
+.os-chart-ticks span{min-width:0;text-align:center;white-space:nowrap}
+.os-chart-legend{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:10px}
+.os-chart-legend>span{display:flex;align-items:center;gap:7px}
+.os-chart-legend-dot{width:7px;height:7px;display:inline-block;border-radius:50%}
+.os-chart-legend-dot.os-chart-series-0{background:#48cfe7}
+.os-chart-legend-dot.os-chart-series-1{background:#8e9cff}
+.os-chart-panel{min-height:260px}
+.os-finance-chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.os-finance-chart-card{min-width:0}
+.os-finance-currency{padding:6px 10px;border:1px solid var(--line-strong);border-radius:999px;color:var(--cyan);font-size:10px;font-weight:750}
+.os-finance-chart-stats{display:flex;gap:12px 24px;flex-wrap:wrap;margin:0 0 9px;color:var(--muted);font-size:10px}
+.os-finance-chart-stats span{display:flex;align-items:center;gap:7px}
+.os-finance-chart-stats b{color:var(--text);font:700 12px Manrope}
+
+/* Light appearance: cards have visible separation rather than merging into one sheet. */
+.light-theme .os-kpi,.light-theme .os-module-card,.light-theme .os-surface{
+  background:#fff;border-color:rgba(39,75,102,.13);
+  box-shadow:0 8px 25px rgba(29,62,88,.065);
+}
+.light-theme .os-kpi{background:linear-gradient(155deg,#fff,#f9fcff)}
+.light-theme .os-module-card{background:#fff}
+.light-theme .os-kpi:hover,.light-theme .os-module-card:hover{
+  background:#f8fcff;border-color:rgba(23,156,190,.3);
+  box-shadow:0 12px 30px rgba(29,62,88,.09);
+}
+.light-theme .os-chart-gridline{stroke:rgba(44,78,103,.13)}
+.light-theme .os-chart-point{stroke:#fff}
+
+/* Elevated Black is distinct from the existing navy Dark appearance. */
+html.black-theme{
+  color-scheme:dark;
+  --bg:#050607;
+  --bg-2:#080a0d;
+  --surface:#0b0e12;
+  --surface-2:#10141a;
+  --surface-3:#161b22;
+  --surface-hover:#171d25;
+  --line:rgba(236,243,250,.075);
+  --line-strong:rgba(236,243,250,.14);
+  --text:#f4f7fb;
+  --text-2:#d1d8e0;
+  --muted:#909ba8;
+  --muted-2:#687482;
+  --cyan:#63d9ee;
+  --cyan-2:#24bcd9;
+  --blue:#879bff;
+  --violet:#a99aff;
+  --green:#4bd9a9;
+  --amber:#f0bd69;
+  --red:#ff8396;
+  --shadow:0 24px 75px rgba(0,0,0,.58);
+}
+html.black-theme body{background:var(--bg);color:var(--text)}
+.black-theme .ambient{opacity:.10}
+.black-theme .sidebar{background:linear-gradient(180deg,#07090b 0%,#050607 100%);border-right-color:rgba(236,243,250,.08)}
+.black-theme .topbar{background:rgba(7,9,11,.96);border-bottom-color:rgba(236,243,250,.08)}
+.black-theme .main-shell{background:#050607}
+.black-theme .main-content{background:#050607}
+.black-theme .os-kpi,.black-theme .os-module-card,.black-theme .os-surface,
+.black-theme .panel,.black-theme .metric-card{
+  background:#0b0e12;border-color:rgba(236,243,250,.11);
+  box-shadow:0 10px 32px rgba(0,0,0,.35);color:#f4f7fb;
+}
+.black-theme .os-module-icon{background:rgba(99,217,238,.085)}
+.black-theme .os-module-card:hover,.black-theme .os-kpi:hover{background:#11161c;border-color:rgba(99,217,238,.32)}
+.black-theme .ai-os,.black-theme .ai-chat-stage,.black-theme .ai-messages{background:#050607}
+.black-theme .ai-os-top,.black-theme .ai-history{background:#090c10}
+.black-theme .ai-chat-head{background:rgba(8,11,14,.96)}
+.black-theme .ai-composer{background:#0c1015;border-color:rgba(236,243,250,.13)}
+.black-theme .ai-message.assistant{background:transparent}
+.black-theme .ai-message-content{color:#dce4ec}
+.black-theme .ai-thread:hover,.black-theme .ai-thread.active{background:#141a20;border-color:rgba(99,217,238,.19)}
+.black-theme .ai-brand-logo{background:#080a0d;border-color:rgba(99,217,238,.20)}
+.black-theme .modal,.black-theme .command-palette{background:#0c1015;border-color:rgba(236,243,250,.13)}
+.black-theme .field input,.black-theme .field select,.black-theme .field textarea,.black-theme .control{background:#080b0f;color:#f4f7fb;border-color:rgba(236,243,250,.14)}
+.black-theme .os-chart-gridline{stroke:rgba(236,243,250,.10)}
+.black-theme .os-chart-point{stroke:#050607}
+
+/* Keep the card rhythm consistent without narrowing tablet and phone layouts. */
+@media(max-width:1100px){
+  .os-command-centre{gap:20px}
+  .os-kpi-grid,.os-module-grid{gap:13px}
+  .os-lower-grid,.os-analytics-grid{gap:14px}
+}
+@media(max-width:760px){
+  .os-command-centre{gap:17px}
+  .os-kpi-grid{gap:11px}
+  .os-module-grid{gap:11px}
+  .os-kpi{min-height:98px;padding:14px}
+  .os-module-card{min-height:82px;padding:11px;column-gap:9px;grid-template-columns:34px minmax(0,1fr) auto}
+  .os-module-icon{width:34px;height:34px}
+  .os-module-copy b{font-size:11px}
+  .os-module-copy small{font-size:9px}
+  .os-surface{padding:14px;border-radius:15px}
+  .os-thin-chart svg{height:150px}
+  .os-chart-ticks{font-size:8px}
+  .os-finance-chart-stats{gap:8px 14px}
+  .ai-thread-menu{display:grid!important;opacity:.9}
+  .ai-thread-wrap{min-width:0}
+  .theme-choice-row .btn{flex:1 1 calc(50% - 9px);min-width:0}
+}
