@@ -37,6 +37,23 @@ The `nexus_core_join_indexes` migration adds targeted composite indexes for orga
 
 The existing `supabase_realtime` publication already contains the secured collaboration, task, notification and service tables. The tracked `nexus_realtime_intelligence` migration adds `nexus_ai_conversations` and `nexus_ai_messages`. The browser subscribes with the authenticated Supabase client and organisation filters; table RLS remains authoritative. The current implementation subscribes to INSERT and UPDATE only (never DELETE events) and removes the channel on sign-out. The design uses Postgres Changes for the early company deployment; evaluate private Broadcast channels and server-authorised fan-out before scaling to large subscriber counts. The Supabase Free plan has finite Realtime limits.
 
+## Free-plan backup and continuity
+
+Davonium Technologies currently uses the Supabase Free plan. Supabase documents that Free projects do not receive automatic daily database backups and can be paused after a week of low activity. The project should therefore be checked regularly for activity and manually exported.
+
+A Windows backup helper is available at `scripts/backup-supabase.ps1`. After installing the Supabase CLI and authenticating, run it from PowerShell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\backup-supabase.ps1
+```
+
+It writes private backup files under the ignored local `backups/` directory. The export includes the custom `public` and `private` schema, application data from those schemas, and custom roles. It does **not** export managed Auth/Storage schemas, Storage file objects, or a point-in-time recovery snapshot. Keep encrypted copies somewhere other than the same computer. Never commit backups to Git.
+
+Before a recovery or migration to another project, review the dump, restore privileges/default privileges carefully, and verify Storage bucket policies, Auth users/configuration, Edge Function source/secrets and external assets separately.
+
+The full historical schema baseline is still missing from Git. Once the local Supabase CLI is installed and the owner can authenticate to the project database, use the documented remote workflow to pull the current schema into a reviewed baseline migration. Do not run `db reset --remote` or use destructive reset operations against the live project.
+
 ## Production safeguards
 
 - All company data must remain behind authenticated sessions, RLS and permission checks.
