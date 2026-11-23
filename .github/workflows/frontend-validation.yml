@@ -40,7 +40,7 @@ jobs:
               "assets/branding/davonium-d-icon.webp",
               "assets/branding/davonium-nexus.svg",
               "assets/branding/davonium-starfield.svg",
-              "manifest.webmanifest", "service-worker.js", "offline.html",\n              "manifest.webmanifest", "service-worker.js", "offline.html"
+              "manifest.webmanifest", "service-worker.js", "offline.html"
           ]
           missing = [item for item in required if not (root / item).is_file()]
           if missing:
