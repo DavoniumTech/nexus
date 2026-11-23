@@ -67,7 +67,7 @@ Do not populate production tables with guessed/sample operational records just t
 
 ## 7. Migration baseline
 
-The five tracked migration files exactly match the five applied remote migration versions. The repository still needs a full initial schema baseline. Once the Supabase CLI and database password are available to the owner, follow the official workflow to pull the current remote schema and review the resulting baseline before the first CLI-driven schema deployment. Do not reset the live database.
+The six tracked migration files exactly match the six applied remote migration versions. The repository still needs a full initial schema baseline. Once the Supabase CLI and database password are available to the owner, follow the official workflow to pull the current remote schema and review the resulting baseline before the first CLI-driven schema deployment. Do not reset the live database.
 
 ## Current state
 
