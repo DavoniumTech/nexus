@@ -825,3 +825,9 @@ html,body{width:100%;height:100%;min-height:100%;overflow:hidden;overscroll-beha
  .ai-composer{width:calc(100% - 14px);margin:0 auto 5px;padding:8px 10px;border-radius:14px}.ai-composer textarea{font-size:16px;min-height:39px}.ai-composer-bottom>span{font-size:7px}.ai-composer-bottom .btn{font-size:9px;min-width:70px}
  .ai-usage-strip{gap:7px;padding-bottom:6px;font-size:7px}.ai-usage-strip span:nth-child(3){display:none}
 }
+
+/* Intelligence owns the viewport; its internal history rail replaces global navigation. */
+#app.ai-mode .sidebar,#app.ai-mode .topbar,#app.ai-mode .app-footer{display:none!important}
+#app.ai-mode .main-shell{margin-left:0!important;width:100%!important;height:100dvh!important}
+#app.ai-mode .main-content{height:100dvh!important;max-height:100dvh!important}
+#app.ai-mode #pageContent{height:100%;min-height:0}
