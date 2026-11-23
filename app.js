@@ -543,7 +543,14 @@
   }
   async function loadAIConversation(id){
     state.chatId=id;document.querySelectorAll("[data-ai-conversation]").forEach(button=>button.classList.toggle("active",button.dataset.aiConversation===id));const host=$("aiMessages");if(host)host.innerHTML=loadingMarkup();
-    try{const d=unwrap(await api("intelligence","conversation.get",{conversation_id:id}));const c=d.conversation||{},messages=d.messages||[];state.chatId=id;state.chatMode=c.assistant_mode||"company";if($("aiModeSelect"))$("aiModeSelect").value=state.chatMode;
+    try{const d=unwrap(await api("intelligence","conversation.get",{conversation_id:id}));const c=d.conversation||{},messages=d.messages||[];state.chatId=id;state.chatMode=c.assistant_mode||"company";
+      const generalMode=state.chatMode==="general";
+      if($("aiModeSelect"))$("aiModeSelect").value=state.chatMode;
+      const title=$(".ai-workspace-head h2"),description=$(".ai-workspace-head p"),composer=$("aiMessageInput"),counter=$("aiCharCount");
+      if(title)title.textContent=generalMode?"Your AI workspace.":"Company intelligence.";
+      if(description)description.textContent=generalMode?"Ask anything: learn, write, plan, calculate or code. This conversation does not access private company records.":"Ask a question about the Nexus records available to your role.";
+      if(composer){composer.placeholder=generalMode?"Message DVNM Intelligence…":"Ask about authorised Davonium company records…";composer.maxLength=Number(state.cache.intelligence?.policy?.max_message_chars||10000);}
+      if(counter)counter.textContent=`0 / ${fmtNum(state.cache.intelligence?.policy?.max_message_chars||10000)} characters · ${generalMode?"General AI assistant":"Read-only company data"}`;
       if(host)host.innerHTML=messages.length?messages.map(m=>`<article class="ai-message ${m.role==="user"?"user":"assistant"}"><div class="ai-message-head"><b>${m.role==="user"?"You":"DVNM Intelligence"}</b><span>${fmtTime(m.created_at)}</span></div><div class="ai-message-content">${esc(m.content).replace(/\n/g,"<br>")}</div>${m.source_tools?.length?`<div class="ai-source-tags">Sources: ${m.source_tools.map(esc).join(" · ")}</div>`:""}</article>`).join(""):`<div class="chat-welcome"><div class="ai-orb">✦</div><h3>${esc(c.title||"New conversation")}</h3><p>${state.chatMode==="general"?"Ask DVNM Intelligence to explain, write, plan, calculate, code or help you learn. This conversation does not read private company records.":"Ask a question about authorised Davonium company data. Answers are grounded in Nexus records your role can access."}</p></div>`;
       if(host)host.scrollTop=host.scrollHeight;
     }catch(e){if(host)host.innerHTML=`<div class="notice error">${esc(e.message)}</div>`;}
