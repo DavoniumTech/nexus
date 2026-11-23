@@ -21,6 +21,7 @@ required_migrations = [
     "20261123201433_nexus_rls_policy_performance.sql",
     "20261123201749_nexus_realtime_intelligence.sql",
     "20261123203521_nexus_core_join_indexes.sql",
+    "20261123204728_nexus_rls_auto_enable_acl.sql",
 ]
 missing = [name for name in required_migrations if not (MIGRATIONS / name).is_file()]
 if missing:
@@ -31,6 +32,7 @@ modes = (MIGRATIONS / required_migrations[1]).read_text(encoding="utf-8")
 rls = (MIGRATIONS / required_migrations[2]).read_text(encoding="utf-8")
 realtime = (MIGRATIONS / required_migrations[3]).read_text(encoding="utf-8")
 join_indexes = (MIGRATIONS / required_migrations[4]).read_text(encoding="utf-8")
+rls_acl = (MIGRATIONS / required_migrations[5]).read_text(encoding="utf-8")
 edge = EDGE.read_text(encoding="utf-8")
 app = APP.read_text(encoding="utf-8")
 html = INDEX.read_text(encoding="utf-8")
@@ -61,6 +63,7 @@ contracts = {
     "AI conversations in Realtime publication": "public.nexus_ai_conversations" in realtime,
     "AI messages in Realtime publication": "public.nexus_ai_messages" in realtime,
     "targeted organisation-scoped join indexes": "nexus_notifications_org_recipient_idx" in join_indexes and "projects_org_client_idx" in join_indexes and "tasks_org_assignee_due_idx" in join_indexes,
+    "RLS auto-enable function direct execution revoked": "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable()" in rls_acl,
     "authenticated Edge Function": "withSupabase" in edge and 'auth: "user"' in edge,
     "private server ledger secret used": 'Deno.env.get("NEXUS_AI_LEDGER_KEY")' in edge,
     "general assistant prompt": "buildGeneralSystemInstruction" in edge,
