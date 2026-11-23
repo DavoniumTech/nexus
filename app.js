@@ -86,7 +86,15 @@
     chatId:null, chatMode:"general", chatBusy:false, realtimeChannel:null, realtimeRefreshTimer:null, realtimeAIRefreshTimer:null, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
   };
 
-  function cfg(){ return {url:(localStorage.getItem("nexus_url")||sessionStorage.getItem("nexus_url")||DEFAULT_URL).replace(/\/$/,""), key:localStorage.getItem("nexus_publishable_key")||sessionStorage.getItem("nexus_publishable_key")||localStorage.getItem("nexus_anon")||""}; }
+  const DEFAULT_PUBLISHABLE_KEY = "sb_publishable_aaf6R55TSYLgz3wdl6VYxA_umccmSh7";
+  function cfg(){
+    const url=(localStorage.getItem("nexus_url")||sessionStorage.getItem("nexus_url")||DEFAULT_URL).replace(/\/$/,"");
+    const savedKey=localStorage.getItem("nexus_publishable_key")||sessionStorage.getItem("nexus_publishable_key")||localStorage.getItem("nexus_anon")||"";
+    // This deployment belongs to one fixed Supabase project. Use its public key by default on every origin/browser;
+    // preserve an explicitly configured key only when the project URL was changed in Connection settings.
+    const key=url===DEFAULT_URL?DEFAULT_PUBLISHABLE_KEY:savedKey;
+    return {url,key};
+  }
   function connectedClient(){ const c=cfg(); if(!window.supabase||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
   function notify(message,type="info"){ const host=$("toastRegion"); const el=document.createElement("div");el.className="toast"+(type==="error"?" error":type==="success"?" success":"");el.textContent=message;host.appendChild(el);setTimeout(()=>el.remove(),4300); }
   function connection(ok,message){ $("connectionText").textContent=message|| (ok?"Connected securely":"Connection issue"); $("sidebarStatusDot").className="status-dot"+(ok?"": " bad"); }
@@ -176,6 +184,7 @@
       $("authScreen").classList.add("hidden");$("app").classList.remove("hidden");connection(true,`Connected · ${state.role}`);
       const perm=await safe(edge("permissions",orgBody({})));
       if(perm.ok){const p=perm.data;state.permissions=p.permissions||[];state.permissionMap={};state.permissions.forEach(v=>state.permissionMap[v.key]=!!v.allowed);}
+      applyRoleNavigation();
       const inviteId=new URLSearchParams(location.search).get("invitation_id");
       if(inviteId){try{await api("invitations","accept",{invitation_id:inviteId});history.replaceState({},"",location.pathname);notify("Nexus invitation accepted.","success");}catch(error){notify(error.message,"error");}}
       await updateInboxCount();await setupRealtime();await navigate(state.role==="client"?"portal":"overview");
