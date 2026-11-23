@@ -295,6 +295,9 @@ const themes = [
     await overviewPage.screenshot({ path: path.join(outputDir, "overview-mobile.png"), fullPage: true });
 
     // DVNM Intelligence UI fixture: verify mode separation and owner limit controls.
+    // The prior responsive assertion intentionally leaves the page at 390px;
+    // restore desktop width because the mobile sidebar is hidden off-canvas.
+    await overviewPage.setViewportSize({ width: 1440, height: 960 });
     const intelligenceNav = overviewPage.locator('#nav [data-page="intelligence"]');
     if (await intelligenceNav.count()) {
       await intelligenceNav.click();
