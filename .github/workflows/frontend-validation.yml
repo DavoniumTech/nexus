@@ -26,6 +26,8 @@ jobs:
           node --check service-worker.js
       - name: Validate Supabase and frontend contracts
         run: python scripts/backend-contract-check.py
+      - name: Validate production release contract
+        run: python scripts/nexus-release-check.py
       - name: Validate required static assets
         run: |
           python - <<'PY'

@@ -31,6 +31,20 @@ The frontend calls the existing 17 deployed Supabase Edge Functions. See [`backe
 
 All Nexus writes are sent through the existing Edge Functions and their database permission/RLS checks. The app does not directly write to company tables from the browser. The private document workflow uses a signed upload request followed by metadata registration; downloads use short-lived signed URLs. The private bucket is `nexus-private-documents`; the frontend enforces the backend's 25 MB upload limit and supported MIME types.
 
+## Finance and analytics
+
+- Finance includes an organisation-scoped chart of accounts, a double-entry journal, posted-balance reporting and editable budgets.
+- Journal entries are posted through the permission-checked atomic finance RPC. The browser cannot directly edit posted journal headers or lines; the server validates account ownership, currency and equal debit/credit totals.
+- Finance is an internal ledger only. It is not a live bank feed, payment processor, payroll service or bank-login integration.
+- Analytics combines existing verified product metrics with opt-in, privacy-minimised Nexus usage events. Events do not include prompts, messages, form values, credentials or private documents.
+- Finance and analytics sections are hidden for roles without the matching permissions. Owner/admin roles receive their management permissions by default; other members require explicit permission assignment.
+
+## Install and offline support
+
+Nexus includes a standalone PWA manifest, a static application-shell service worker and an offline fallback. The service worker caches only static app resources; Supabase authentication, Edge Functions, database requests and private storage remain network-only. Private company records are not cached for offline use.
+
+DVNM Intelligence has separate General Assistant and Company Intelligence modes. Company mode uses read-only, permission-filtered tools. The AI policy remains disabled until the owner configures provider/ledger secrets in Supabase and explicitly confirms the provider privacy and billing disclosures.
+
 ## Security boundaries
 
 - Never paste a Supabase `service_role` key into the browser. The app rejects a decoded service-role JWT and only accepts a publishable/anon project key.
