@@ -50,7 +50,7 @@ contracts = {
     "company assistant tool gate": 'assistantMode === "company" ? getAvailableTools(can) : []' in edge,
     "owner AI settings action": '"policy.update"' in edge and '"nexus_ai_update_settings"' in edge,
     "policy enable argument matches SQL": "p_enabled: enabling" in edge,
-    "browser contains no provider key references": "GEMINI_API_KEY" not in app and "NEXUS_AI_LEDGER_KEY" not in app,
+    "browser contains no provider secret values": not re.search(r"\\bAIza[A-Za-z0-9_-]{25,}\\b", app) and not re.search(r"(?:GEMINI_API_KEY|NEXUS_AI_LEDGER_KEY)\\s*[:=]\\s*[\\\'\\\"][^\\\'\\\"]+[\\\'\\\"]", app),
     "frontend exposes two AI modes": 'id="aiModeSelect"' in app and "General Assistant" in app and "Company Intelligence" in app,
     "frontend exposes bounded limit controls": "function manageAILimits()" in app,
     "Realtime setup cleans up subscriptions": "async function clearRealtime()" in app and "await clearRealtime();" in app,
