@@ -10,7 +10,7 @@ A responsive, static web application for the existing Davonium Technologies Supa
 - Product operations: product catalogue, metric definitions, verified metrics, manual-metric review, metric history, integration records, ingestion history, and release notes.
 - Governance: objectives, key results, decision ledger, weekly company reviews, investor updates, and investor access.
 - Secure collaboration: private document upload/download, controlled client visibility, channels, direct messages, membership administration, moderation, announcements, and personal inbox/preferences.
-- DVNM Intelligence: persistent company conversations, service/policy/usage information, and read-only data analysis under existing server-side quotas and consent checks.
+- DVNM Intelligence: persistent **General Assistant** and **Company Intelligence** conversations. General Assistant does not query company records; Company Intelligence uses permission-scoped, read-only Nexus data tools. Both use server-side request, input, output-token and monthly-cost safeguards. Owner controls expose capacity settings.
 - Control: service telemetry, recorded service components, incidents, session assurance, audit history, effective permission catalogue, and secure connection settings.
 - Role-scoped client and investor portal pages.
 
@@ -38,7 +38,7 @@ All Nexus writes are sent through the existing Edge Functions and their database
 - Authentication is handled by Supabase Auth. Every Edge Function call carries the publishable API key and the current signed-in user's access token.
 - The database and Edge Functions are authoritative. Hiding a button is not a security boundary.
 - The frontend does not expose trusted monitor execution, integration provider tests, notification provider tests, or trusted-server notification creation.
-- DVNM Intelligence is not presented as an unrestricted general-purpose agent. It remains read-only and does not bypass the deployed budget, rate, output-token, or permission policies. The enable flow requires explicit Nexus consent confirmation.
+- General Assistant and Company Intelligence are separate conversation modes. General Assistant does not access private company records. Company Intelligence can only read the signed-in user's permitted Nexus records. Both modes require an enabled service policy, server-side provider and ledger secrets, and usage reservation. Google AI Studio Free Tier content-use terms must be reviewed and explicitly accepted before company data is sent to the provider.
 
 ## Design direction
 
@@ -48,7 +48,7 @@ See [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) for the design principles and tokens.
 
 ## Verification note
 
-The frontend JavaScript is checked by the repository's GitHub Actions workflow, and the static shell is designed for the existing hosting architecture. The app has not been authenticated against the owner's live Nexus in this build environment, so account-specific permissions, real data, and every write path still require a signed-in browser verification after the correct publishable key is entered. The deployed Supabase functions and database were not changed by this frontend build.
+The frontend JavaScript is checked by the repository's GitHub Actions workflow, including the `backend-*` development branch. Chromium smoke tests cover the sign-in shell, official Davonium logo asset, theme preferences, reflow from 320 CSS pixels and the authenticated overview fixture. The live authenticated account must still be tested separately. The app has not been authenticated against the owner's live Nexus in this build environment, so account-specific permissions, real data, and every write path still require a signed-in browser verification after the correct publishable key is entered. The deployed Supabase functions and database were not changed by this frontend build.
 
 
 ## Appearance and readability
