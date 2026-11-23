@@ -195,8 +195,6 @@ async function main(){
     "Authenticated dashboard must display the resolved company");
   assert.ok(await loginPage.locator(".os-module-card").count() >= 4,
     "Authenticated dashboard must render company modules");
-  await loginContext.close();
-
   // Test all four appearance modes from the real settings panel.
   await loginPage.locator('#nav [data-page="settings"]').click();
   await loginPage.waitForSelector('[data-act="theme-black"]', { state: "visible" });
