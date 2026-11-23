@@ -10,6 +10,7 @@ This repository retains the existing Supabase implementation. Work is being stag
 - Role permissions with user-specific overrides.
 - Audit triggers and read-only DVNM Intelligence tools.
 - Product metrics, service monitoring, communications, notifications and investor portal foundations.
+- Supabase Realtime publication for collaboration, tasks, milestones, notifications, service telemetry, and private DVNM Intelligence conversations/messages.
 
 ## Migration discipline
 
@@ -27,6 +28,10 @@ The tracked migration raises app limits to:
 - 40,000 response characters.
 
 The existing $1 monthly estimated-cost ceiling remains unchanged. Google Gemini Free Tier currently advertises zero token charges for eligible models, but says submitted content may be used to improve Google products. Enabling company-data analysis therefore requires an explicit organisation decision about that data transfer. The provider's quotas are not controlled by Nexus and may be lower than the local app limits.
+
+## Realtime delivery
+
+The existing `supabase_realtime` publication already contains the secured collaboration, task, notification and service tables. The tracked `nexus_realtime_intelligence` migration adds `nexus_ai_conversations` and `nexus_ai_messages`. The browser subscribes with the authenticated Supabase client and organisation filters; table RLS remains authoritative. The current implementation subscribes to INSERT and UPDATE only (never DELETE events) and removes the channel on sign-out. The design uses Postgres Changes for the early company deployment; evaluate private Broadcast channels and server-authorised fan-out before scaling to large subscriber counts. The Supabase Free plan has finite Realtime limits.
 
 ## Production safeguards
 
