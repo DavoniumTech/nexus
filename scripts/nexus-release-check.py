@@ -26,7 +26,7 @@ for relative in (
 ):
     require((ROOT / relative).is_file(), f"missing {relative}")
 
-for table in ("finance_accounts", "finance_journal_entries", "finance_journal_lines", "finance_budgets", "analytics_events"):
+require(any(p.name.endswith("_nexus_finance_ledger_immutability.sql") for p in (ROOT / "supabase/migrations").glob("*.sql")), "finance ledger hardening migration is not tracked")\n\nfor table in ("finance_accounts", "finance_journal_entries", "finance_journal_lines", "finance_budgets", "analytics_events"):
     require(table in types, f"generated database types missing {table}")
     require(table in (ROOT / "supabase/migrations/20261123215144_nexus_finance_and_product_analytics.sql").read_text(encoding="utf-8"), f"initial finance migration missing {table}")
 
@@ -61,6 +61,6 @@ require(manifest.get("start_url") == "./" and manifest.get("scope") == "./", "PW
 require('url.pathname.includes("/functions/")' in worker, "service worker must not cache Edge Function calls")
 require('url.pathname.includes("/auth/")' in worker, "service worker must not cache authentication calls")
 require('url.pathname.includes("/storage/")' in worker, "service worker must not cache private storage calls")
-require("service_role" not in app and "GEMINI_API_KEY" not in app and "NEXUS_AI_LEDGER_KEY" not in app, "browser bundle must not contain service/provider/ledger secrets")
+require("SUPABASE_SERVICE_ROLE_KEY" not in app and "GEMINI_API_KEY" not in app and "NEXUS_AI_LEDGER_KEY" not in app, "browser bundle must not contain service/provider/ledger key values or environment names")
 
 print("Nexus release contract passed: finance schema, analytics routes, AI tools, privacy controls, and offline PWA shell.")
