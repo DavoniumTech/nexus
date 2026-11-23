@@ -10,7 +10,7 @@ The `index.ts` files in this directory are exported from the active deployed fun
 
 | Function | Deployed version | Gateway JWT verification | Authentication note |
 |---|---:|---|---|
-| `bright-task` | 5 | enabled | Authenticated-user permission catalogue |
+| `bright-task` | 13 | enabled | Authenticated-user permission catalogue |
 | `nexus-audit` | 5 | enabled | User session and audit permissions |
 | `nexus-command-center` | 5 | enabled | Authenticated company commands |
 | `nexus-communications` | 5 | enabled | Authenticated channels and messages |
