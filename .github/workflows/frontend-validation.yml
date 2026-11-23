@@ -22,6 +22,8 @@ jobs:
           node-version: "22"
       - name: Validate JavaScript syntax
         run: node --check app.js
+      - name: Validate Supabase and frontend contracts
+        run: python scripts/backend-contract-check.py
       - name: Validate required static assets
         run: |
           python - <<'PY'
