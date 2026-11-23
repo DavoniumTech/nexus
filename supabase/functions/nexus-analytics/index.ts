@@ -1376,7 +1376,19 @@ export default {
             "set_integration_state",
             "ingestion_runs",
             "sync_events",
-            "ingest"
+            "ingest",
+            "events.ingest",
+            "analytics.dashboard",
+            "finance.overview",
+            "finance.analytics",
+            "finance.accounts.list",
+            "finance.accounts.create",
+            "finance.accounts.update",
+            "finance.entries.list",
+            "finance.entries.create",
+            "finance.budgets.list",
+            "finance.budgets.create",
+            "finance.budgets.update"
           ]
         }, 400);
 
