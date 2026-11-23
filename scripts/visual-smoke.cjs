@@ -211,7 +211,7 @@ async function main(){
     "Authenticated dashboard must render company modules");
   if (await loginPage.locator("#cookieReject").isVisible()) {
     await loginPage.locator("#cookieReject").click();
-    await loginPage.waitForSelector("#cookieConsent.hidden");
+    await loginPage.locator("#cookieConsent").waitFor({ state: "hidden" });
   }
 
   // Analytics line chart is rendered from consented fixture events.
