@@ -24,7 +24,9 @@
     tasks: ["Tasks", "Track execution, ownership and deadlines across projects."],
     clients: ["Clients", "Manage client accounts and their relationships."],
     people: ["People & teams", "Company membership, departments, teams and invitations."],
-    products: ["Products & analytics", "Product portfolio, verified metrics, releases and integrations."],
+    products: ["Products & metrics", "Product portfolio, verified metrics, releases and integrations."],
+    analytics: ["Company analytics", "Consent-based usage and company performance."],
+    finance: ["Finance control", "Chart of accounts, journal and budgets."],
     strategy: ["Strategy & decisions", "Objectives, measurable outcomes, decisions and weekly reviews."],
     investors: ["Investor relations", "Investor access and the company investor room."],
     documents: ["Documents", "Private project documents with controlled client visibility."],
@@ -247,115 +249,81 @@
 
   function loadingMarkup(){return `<div class="loading-shell"><div class="skeleton skeleton-title"></div><div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton skeleton-panel"></div></div>`;}
   async function navigate(page){if(!PAGE[page])page="overview";state.currentPage=page;$("app").classList.toggle("ai-mode",page==="intelligence");document.querySelectorAll(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));setPageTitle(page);$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");$("pageContent").innerHTML=loadingMarkup();
-    const views={overview:renderOverview,projects:renderProjects,tasks:renderTasks,clients:renderClients,people:renderPeople,products:renderProducts,strategy:renderStrategy,investors:renderInvestors,documents:renderDocuments,communications:renderCommunications,announcements:renderAnnouncements,notifications:renderNotifications,intelligence:renderIntelligence,monitoring:renderMonitoring,security:renderSecurity,permissions:renderPermissions,settings:renderSettings,portal:renderPortal};
-    try{await (views[page]||renderOverview)();}catch(error){console.error(`${page} render`,error);$("pageContent").innerHTML=pageHead(page,`<button class="btn btn-secondary" data-act="refresh">${icon("refresh")} Retry</button>`)+`<div class="panel"><div class="notice error">${esc(error.message)}</div><p class="muted" style="font-size:10px;margin:12px 0 0">Your authenticated session is still available. The relevant Edge Function or database policy may have rejected this operation.</p></div>`;}}
+    const views={overview:renderOverview,projects:renderProjects,tasks:renderTasks,clients:renderClients,people:renderPeople,products:renderProducts,analytics:renderAnalytics,finance:renderFinance,strategy:renderStrategy,investors:renderInvestors,documents:renderDocuments,communications:renderCommunications,announcements:renderAnnouncements,notifications:renderNotifications,intelligence:renderIntelligence,monitoring:renderMonitoring,security:renderSecurity,permissions:renderPermissions,settings:renderSettings,portal:renderPortal};
+    try{await (views[page]||renderOverview)();void trackEvent("page_view",page);}catch(error){console.error(`${page} render`,error);$("pageContent").innerHTML=pageHead(page,`<button class="btn btn-secondary" data-act="refresh">${icon("refresh")} Retry</button>`)+`<div class="panel"><div class="notice error">${esc(error.message)}</div><p class="muted" style="font-size:10px;margin:12px 0 0">Your authenticated session is still available. The relevant Edge Function or database policy may have rejected this operation.</p></div>`;}}
   async function refresh(){state.cache={};await navigate(state.currentPage);}
   function quickAction(label,act,symbol="＋"){return `<button class="quick-action" data-act="${esc(act)}"><span class="action-icon">${symbol}</span>${esc(label)}</button>`;}
   function appendRows(items,mapper){return items?.length?items.map(mapper):[];}
 
   // NEXUS OVERVIEW — executive signals built only from successfully returned records.
   async function renderOverview(){
-    const [ccR,orgR,anR,prR,ntR,monR,productsR,objectivesR,integrationsR,membersR,clientsR]=await Promise.all([
-      safe(api("command","overview")),
-      safe(api("workspace","overview")),
-      safe(api("analytics","overview")),
-      safe(api("projects","list_projects")),
-      safe(api("notifications","inbox.list",{limit:8})),
-      safe(api("monitor","status")),
-      safe(api("analytics","products")),
-      safe(api("command","objectives.list")),
-      safe(api("monitor","integrations.list")),
-      safe(api("workspace","members")),
-      safe(api("workspace","client_accounts"))
+    const [c,p,t,pr,m,cl,sv,fi,an,no]=await Promise.all([
+      safe(api("command","overview")),safe(api("projects","list_projects")),safe(api("projects","list_tasks",{limit:100})),
+      safe(api("analytics","products")),safe(api("workspace","members")),safe(api("workspace","client_accounts")),safe(api("monitor","status")),
+      state.permissionMap["finance.view"]?safe(api("analytics","finance.overview")):Promise.resolve({ok:false}),
+      state.permissionMap["analytics.view"]?safe(api("analytics","analytics.dashboard")):Promise.resolve({ok:false}),safe(api("notifications","inbox.list",{limit:6}))
     ]);
-    const cc=ccR.ok?(unwrap(ccR.data)||{}):{};
-    const org=orgR.ok?(unwrap(orgR.data)||{}):{};
-    const analytics=anR.ok?(unwrap(anR.data)||{}):{};
-    const projects=prR.ok?records(prR.data,"projects"):(Array.isArray(cc.projects)?cc.projects:null);
-    const tasks=Array.isArray(cc.tasks)?cc.tasks:null;
-    const notifications=ntR.ok?records(ntR.data,"notifications"):null;
-    const services=monR.ok?records(monR.data):null;
-    const incidents=Array.isArray(cc.open_incidents)?cc.open_incidents:(Array.isArray(cc.incidents)?cc.incidents:null);
-    const products=productsR.ok?records(productsR.data,"products"):null;
-    const objectives=objectivesR.ok?records(objectivesR.data,"objectives"):null;
-    const integrations=integrationsR.ok?records(integrationsR.data,"integrations"):null;
-    const members=membersR.ok?records(membersR.data,"members"):null;
-    const clients=clientsR.ok?records(clientsR.data,"client_accounts"):null;
-    const totalProjects=projects===null?null:projects.length;
-    const activeProjects=projects===null?null:projects.filter(p=>String(p.status||"").toLowerCase()==="active").length;
-    const openTasks=tasks===null?null:tasks.filter(t=>!(/done|completed|cancelled/i.test(t.status||""))).length;
-    const overdueTasks=tasks===null?null:tasks.filter(t=>{
-      const due=t.due_at||t.due_date;
-      return due&&new Date(due).getTime()<Date.now()&&!(/done|completed|cancelled/i.test(t.status||""));
-    }).length;
-    const productCount=analytics.counts?.products??(products===null?null:products.length);
-    const verifiedMetrics=analytics.counts?.verified_non_sample_metrics??analytics.counts?.verified_metrics??null;
-    const unread=notifications===null?null:notifications.filter(n=>!n.read_at).length;
-    const healthyServices=services===null?null:services.filter(x=>safeStatus(x.status||x.component_status)==="good").length;
-    const openIncidents=incidents===null?null:incidents.length;
-    const memberCount=members===null?null:members.length;
-    const clientCount=clients===null?null:clients.length;
-    const accessibleProjects=org.counts?.accessible_projects??totalProjects;
-    const headerActions='<button class="btn btn-secondary" data-act="refresh">'+icon("refresh")+' Refresh</button><button class="btn btn-primary" data-act="create-project">'+icon("plus")+' New project</button>';
-    const hour=new Date().getHours(),greeting=hour<12?"morning":hour<18?"afternoon":"evening";
-    let html=pageHead("overview",headerActions,"Good "+greeting+". Your company operations, at a glance.");
-    const failed=[ccR,orgR,anR,prR,ntR,monR,productsR,objectivesR,integrationsR,membersR,clientsR].filter(x=>!x.ok);
-    if(failed.length)html+='<div class="info-banner">◈ <span>'+failed.length+' Nexus data source(s) could not be loaded. Unavailable values are shown as a dash, not as zero.</span></div>';
-    html+='<section class="panel hero-panel overview-hero"><div class="hero-content"><div class="hero-label">DAVONIUM NEXUS · COMPANY COMMAND</div><h2>Make the next move count.</h2><p>A live view of delivery, products, strategy and operations. Understand what is moving and where attention is needed.</p><div class="quick-actions">'+quickAction("Create a task","create-task","＋")+quickAction("Invite a teammate","invite-member","♙")+quickAction("Add a company update","create-announcement","✦")+quickAction("Ask DVNM Intelligence","go-ai","✧")+'</div></div><div class="overview-hero-mark" aria-hidden="true"><span>✦</span><b>N</b><i></i></div></section>';
-    html+='<div class="grid metric-grid overview-metrics">'+
-      stat("Projects",totalProjects===null?"—":fmtNum(totalProjects),activeProjects===null?"Active count unavailable":fmtNum(activeProjects)+" active","▦")+
-      stat("Open tasks",openTasks===null?"—":fmtNum(openTasks),overdueTasks===null?"Overdue count unavailable":fmtNum(overdueTasks)+" overdue","✓")+
-      stat("Client accounts",clientCount===null?"—":fmtNum(clientCount),"Accounts available to your role","◉")+
-      stat("Nexus members",memberCount===null?"—":fmtNum(memberCount),"Member records available to your role","♙")+
-      stat("Products",productCount===null?"—":fmtNum(productCount),"Registered company products","⬡")+
-      stat("Verified metrics",verifiedMetrics===null?"—":fmtNum(verifiedMetrics),"Verified, non-sample observations","↗")+
-      stat("Unread inbox",unread===null?"—":fmtNum(unread),"Personal notifications","♢")+
-      stat("Healthy services",healthyServices===null?"—":fmtNum(healthyServices),services===null?"Health data unavailable":"of "+fmtNum(services.length)+" monitored components","◈")+
-      stat("Open incidents",openIncidents===null?"—":fmtNum(openIncidents),"Recorded by Nexus operations","⚑")+
-      stat("Integrations",integrations===null?"—":fmtNum(integrations.length),"Registered product connections","⌁")+
-    '</div>';
-    const projectRows=projects===null?[]:projects.slice(0,6).map(p=>{
-      const hasProgress=p.progress_percent!==null&&p.progress_percent!==undefined&&p.progress_percent!==""&&Number.isFinite(Number(p.progress_percent));
-      const progress=hasProgress?Number(p.progress_percent):null;
-      return '<tr><td>'+textCell(p.name,p.slug||p.description)+'</td><td>'+pill(p.status)+'</td><td>'+(hasProgress?esc(Math.max(0,Math.min(100,progress))+'%'):"Not reported")+'</td><td>'+fmtDate(p.target_date)+'</td><td>'+actionButton("Open","open-project",p.id)+'</td></tr>';
-    });
-    const serviceRows=services===null?[]:services.slice(0,6).map(x=>'<tr><td>'+textCell(x.display_name||x.component_key||x.component_name,x.description)+'</td><td>'+pill(x.status||x.component_status)+'</td><td>'+fmtTime(x.last_checked_at||x.checked_at)+'</td></tr>');
-    const productRows=products===null?[]:products.slice(0,5).map(p=>'<tr><td>'+textCell(p.name,p.summary||p.slug)+'</td><td>'+pill(p.status)+'</td><td>'+esc(p.current_version||"—")+'</td></tr>');
-    const objectiveRows=objectives===null?[]:objectives.filter(o=>!["completed","cancelled"].includes(String(o.objective_status||"").toLowerCase())).slice(0,5).map(o=>{
-      const hasProgress=o.progress_percent!==null&&o.progress_percent!==undefined&&o.progress_percent!==""&&Number.isFinite(Number(o.progress_percent));
-      const progress=hasProgress?Number(o.progress_percent):null;
-      return '<tr><td>'+textCell(o.title,o.description)+'</td><td>'+pill(o.objective_status)+'</td><td>'+(hasProgress?esc(Math.max(0,Math.min(100,progress))+"%"):"Not reported")+'</td></tr>';
-    });
-    const integrationRows=integrations===null?[]:integrations.slice(0,6).map(x=>'<tr><td>'+textCell(x.display_name,x.platform||x.integration_key)+'</td><td>'+pill(x.state)+'</td><td>'+pill(x.last_test_status||"not tested")+'</td></tr>');
-    const incidentRows=incidents===null?[]:incidents.slice(0,4).map(i=>'<div class="activity-row"><span class="activity-dot"></span><div class="activity-body"><b>'+esc(i.title||"Untitled incident")+'</b><p>'+esc(i.impact||i.incident_status||i.status||"Open incident")+'</p></div><span class="activity-time">'+fmtDate(i.started_at||i.created_at)+'</span></div>');
-    const notificationRows=notifications===null?[]:notifications.slice(0,5).map(n=>'<div class="activity-row"><span class="activity-dot"></span><div class="activity-body"><b>'+esc(n.title||"Notification")+'</b><p>'+esc(n.body||n.notification_type||"")+'</p></div><span class="activity-time">'+fmtTime(n.created_at)+'</span></div>');
-    const progressProjects=projects===null?[]:projects.filter(p=>p.progress_percent!==null&&p.progress_percent!==undefined&&p.progress_percent!==""&&Number.isFinite(Number(p.progress_percent))).slice(0,5);
-    const progressMarkup=progressProjects.length?progressProjects.map(p=>{
-      const value=Math.max(0,Math.min(100,Number(p.progress_percent)));
-      return '<div class="overview-progress-row"><div class="overview-progress-label"><b>'+esc(p.name||"Untitled project")+'</b><span>'+value+'%</span></div><div class="overview-progress-track" role="img" aria-label="'+esc(p.name||"Project")+' progress: '+value+'%"><i style="width:'+value+'%"></i></div></div>';
-    }).join(""):empty("No progress measurements","Project progress appears when the service returns recorded percentages.");
-    html+='<div class="content-grid overview-grid"><div>'+
-      panel("Project delivery","Current work across projects you can access.",table(["Project","Status","Progress","Target",""],projectRows,{emptyTitle:projects===null?"Project data unavailable":"No accessible projects",emptyCopy:projects===null?"The project service could not be reached.":"Create a project to organise delivery."}),'<button class="panel-link" data-page="projects">View projects ↗</button>')+
-      panel("Delivery progress","Recorded project progress percentages. No values are estimated.",progressMarkup,'<button class="panel-link" data-page="tasks">Open tasks ↗</button>')+
-      panel("Product portfolio","Registered products and their recorded lifecycle states.",table(["Product","Status","Version"],productRows,{emptyTitle:products===null?"Product data unavailable":"No products registered",emptyCopy:products===null?"The product catalogue could not be loaded.":"Register products to track their metrics and releases."}),'<button class="panel-link" data-page="products">Open analytics ↗</button>')+
-      '</div><div>'+
-      panel("Strategic priorities","Current objectives returned by the strategy service.",table(["Objective","Status","Progress"],objectiveRows,{emptyTitle:objectives===null?"Strategy data unavailable":"No active objectives",emptyCopy:objectives===null?"The objectives service could not be loaded.":"Company objectives will appear here when recorded."}),'<button class="panel-link" data-page="strategy">View strategy ↗</button>')+
-      panel("Integration health","Registered integrations and their latest recorded test state.",table(["Integration","State","Latest test"],integrationRows,{emptyTitle:integrations===null?"Integration data unavailable":"No integrations registered",emptyCopy:integrations===null?"The integration service could not be loaded.":"Register product connections to track their status."}),'<button class="panel-link" data-page="monitoring">System health ↗</button>')+
-      panel("Service components","Latest recorded operational status.",table(["Component","Status","Last checked"],serviceRows,{emptyTitle:services===null?"Service data unavailable":"No monitored components",emptyCopy:services===null?"The monitoring service could not be loaded.":"No component status has been returned."}))+
-      panel("Open incidents","Recorded operational issues that may need attention.",incidents===null?empty("Incident data unavailable","The command centre did not return incident records."):incidentRows.length?'<div class="activity-list">'+incidentRows.join("")+'</div>':empty("No open incidents","No unresolved incidents were returned."),'<button class="panel-link" data-page="monitoring">View incidents ↗</button>')+
-      panel("Your latest notifications","Recent personal updates from Nexus.",notifications===null?empty("Inbox unavailable","Notifications could not be loaded."):notificationRows.length?'<div class="activity-list">'+notificationRows.join("")+'</div>':empty("Inbox is clear","New notifications will appear here."),'<button class="panel-link" data-page="notifications">Open inbox ↗</button>')+
-      '</div></div>';
-    html+='<div class="section-title"><div><h2>Nexus operating signals</h2><p>Company context and source availability for this session.</p></div><span class="subtle">Updated '+fmtTime(new Date().toISOString())+'</span></div>'+
-      '<div class="grid property-grid overview-property-grid">'+
-      property("Nexus organisation",state.workspace.name||"Davonium Technologies")+
-      property("Your role",state.role)+
-      property("Accessible projects",accessibleProjects)+
-      property("Verified metrics",verifiedMetrics===null?"Not available":verifiedMetrics)+
-      property("Service components",services===null?"Not available":services.length)+
-      property("Open incidents",openIncidents===null?"Not available":openIncidents)+
-      '</div>';
-    $("pageContent").innerHTML=html;
+    const cmd=c.ok?(unwrap(c.data)||{}):{},projects=p.ok?records(p.data,"projects"):(cmd.projects||[]),tasks=t.ok?records(t.data,"tasks"):(cmd.tasks||[]);
+    const products=pr.ok?records(pr.data,"products"):[],members=m.ok?records(m.data,"members"):[],clients=cl.ok?records(cl.data,"client_accounts"):[],services=sv.ok?records(sv.data):[];
+    const finance=fi.ok?(unwrap(fi.data)?.finance||{}):{},analytics=an.ok?(unwrap(an.data)?.analytics||{}):{};
+    const active=projects.filter(x=>/active|progress/i.test(x.status||"")).length,open=tasks.filter(x=>!/done|complete|cancel/i.test(x.status||"")).length;
+    const due=tasks.filter(x=>{let d=x.due_date||x.due_at;return d&&new Date(d)<new Date()&&!/done|complete|cancel/i.test(x.status||"");}).length;
+    const healthy=services.filter(x=>safeStatus(x.status||x.component_status)==="good").length,assets={};
+    (finance.accounts||[]).filter(x=>x.account_type==="asset").forEach(x=>assets[x.currency_code]=(assets[x.currency_code]||0)+Number(x.current_balance||0));
+    const assetValue=Object.keys(assets).map(k=>new Intl.NumberFormat(undefined,{style:"currency",currency:k,maximumFractionDigits:0}).format(assets[k])).join(" · ")||"No balances";
+    const greeting=new Date().getHours()<12?"Good morning":new Date().getHours()<18?"Good afternoon":"Good evening";
+    const cards=[["projects","Projects",projects.length,"Delivery portfolio","layers"],["tasks","Open tasks",open,due+" overdue","check-square"],["clients","Clients",clients.length,"Customer relationships","briefcase"],["people","People & teams",members.length,"Company directory","users"],["products","Products",products.length,"Product portfolio","box"],["analytics","Analytics",an.ok?String(analytics.events_30d??0):"Restricted","Consented events · 30 days","activity"],["finance","Finance",fi.ok?assetValue:"Restricted","Posted asset balances","wallet"],["monitoring","System health",services.length,healthy+" healthy records","shield-check"]];
+    const cardHtml=cards.map(x=>`<button class="os-module-card" data-page="${{x[0]}"><span class="os-module-icon">${{icon(x[4])}</span><span class="os-module-copy"><b>${{esc(x[1])}</b><small>${{esc(x[3])}</small></span><strong>${{esc(x[2])}</strong><span class="os-module-arrow">↗</span></button>`).join("");
+    const rows=projects.slice(0,6).map(x=>`<tr class="os-click-row" data-act="open-project" data-id="${{esc(x.id)}"><td><b>${{esc(x.name||"Untitled project")}</b></td><td>${{pill(x.status||"unknown")}</td><td>${{x.progress_percent==null?"—":esc(fmtNum(x.progress_percent)+"%")}</td><td>${{fmtDate(x.target_date)}</td></tr>`).join("");
+    const feed=(no.ok?records(no.data,"notifications"):[]).map(x=>`<div class="os-feed-row"><i class="os-feed-dot"></i><div><b>${{esc(x.title||"Nexus update")}</b><small>${{esc(x.body||x.notification_type||"")}</small></div><time>${{fmtTime(x.created_at)}</time></div>`).join("");
+    const projectButton=state.permissionMap["projects.create"]?'<button class="btn btn-primary" data-act="create-project">＋ New project</button>':"";
+    let html=`<section class="os-command-centre"><header class="os-welcome-row"><div><div class="os-eyebrow">DAVONIUM NEXUS / COMMAND CENTRE</div><h1>${{greeting}, ${{esc(state.profile.display_name?.split(" ")[0]||"there")}.</h1><p>One operating picture for delivery, people, products, finance and intelligence.</p></div><div class="os-welcome-actions">${{projectButton}<button class="btn btn-secondary" data-act="create-task">＋ New task</button><button class="btn btn-secondary" data-page="intelligence">✦ Ask DVNM</button><button class="icon-button" data-act="refresh">↻</button></div></header>
+    <div class="os-kpi-grid"><button class="os-kpi" data-page="projects"><span>Active projects</span><strong>${{fmtNum(active)}</strong><small>${{fmtNum(projects.length)} total</small></button><button class="os-kpi" data-page="tasks"><span>Open work</span><strong>${{fmtNum(open)}</strong><small>${{fmtNum(due)} overdue</small></button><button class="os-kpi" data-page="people"><span>People</span><strong>${{fmtNum(members.length)}</strong><small>Directory records</small></button><button class="os-kpi" data-page="monitoring"><span>Healthy services</span><strong>${{services.length?Math.round(healthy/services.length*100)+"%":"—"}</strong><small>${{healthy} of ${{services.length} services</small></button></div>
+    <div class="os-section-head"><div><span class="os-eyebrow">OPERATING MODULES</span><h2>Navigate your company</h2></div><span class="os-live-indicator"><i></i> Permission-scoped services</span></div><section class="os-module-grid">${{cardHtml}</section>
+    <div class="os-lower-grid"><section class="os-surface"><header><div><span class="os-eyebrow">DELIVERY CONTROL</span><h2>Project portfolio</h2></div><button class="btn btn-quiet" data-page="projects">Open projects ↗</button></header>${{table(["Project","Status","Progress","Target"],rows,{emptyTitle:"No accessible projects",emptyCopy:"Projects assigned to your role will appear here."})}</section><section class="os-surface"><header><div><span class="os-eyebrow">LIVE SIGNALS</span><h2>Company activity</h2></div><button class="btn btn-quiet" data-page="notifications">Inbox ↗</button></header><div class="os-feed">${{feed||empty("No new activity","Operational events and notifications will appear here.")}</div></section></div>
+    <footer class="os-bottom-strip"><span><i></i> ${{esc(state.workspace.name||"Davonium Technologies")}</span><span>${{esc(state.role)} access</span><span>Updated ${{fmtTime(new Date().toISOString())}</span><button data-page="monitoring">System health ↗</button></footer></section>`;
+    $("#pageContent").innerHTML=html;
   }
+
+
+  async function renderAnalytics(){
+    const [r,pr]=await Promise.all([safe(api("analytics","analytics.dashboard")),safe(api("analytics","overview"))]);
+    const d=r.ok?(unwrap(r.data)?.analytics||{}):{},prod=pr.ok?(unwrap(pr.data)||{}):{},daily=d.daily||[],max=Math.max(1,...daily.map(x=>Number(x.events||0)));
+    const bars=daily.filter((x,i)=>i%2===0||i===daily.length-1).map(x=>`<div class="os-chart-col" title="${{esc(x.day)}"><i style="height:${{Math.max(3,Number(x.events||0)/max*100)}%"></i><small>${{esc(x.day.slice(5))}</small></div>`).join("");
+    const pages=(d.top_pages||[]).map(x=>`<tr><td>${{esc(x.page)}</td><td>${{fmtNum(x.views)}</td></tr>`);let consent={};try{consent=JSON.parse(localStorage.getItem("nexus_privacy_consent_v1")||"{}");}catch(_){}
+    let html=pageHead("analytics",`<button class="btn btn-secondary" data-act="refresh">↻ Refresh</button><button class="btn btn-primary" data-act="analytics-consent">Privacy settings</button>`,"Consent-based usage intelligence and verified product metrics.");
+    html+=`<div class="os-kpi-grid">${{stat("Events · 30 days",fmtNum(d.events_30d??0),"Optional usage events","activity")}${{stat("Events · 7 days",fmtNum(d.events_7d??0),"Recent product usage","activity")}${{stat("Active users",fmtNum(d.active_users_30d??0),"Unique accounts in 30 days","users")}${{stat("Verified metrics",fmtNum(prod.counts?.verified_non_sample_metrics??0),"Existing verified metrics","trending-up")}</div><div class="os-analytics-grid"><section class="os-surface os-chart-panel"><header><div><span class="os-eyebrow">USAGE TRENDS</span><h2>Activity · last 30 days</h2><p>Only minimised, consented events are included.</p></div></header><div class="os-chart-bars">${{bars||empty("No analytics yet","Usage begins after an authorised member opts in.")}</div></section><section class="os-surface"><header><div><span class="os-eyebrow">MOST USED</span><h2>Module activity</h2></div></header>${{table(["Page","Views"],pages)}</section></div><section class="os-surface os-privacy-panel"><div><span class="os-eyebrow">PRIVACY & GOVERNANCE</span><h2>Optional analytics is opt-in</h2><p>Essential authentication storage remains active. Optional analytics records module event type and timestamp only. It never records prompts, messages, form values, credentials or documents.</p></div><div class="os-privacy-status"><span class="${{consent.analytics?"allowed":"disabled"}">${{consent.analytics?"Analytics enabled":"Analytics disabled"}</span><button class="btn btn-secondary" data-act="analytics-consent">Change consent</button></div></section>`;
+    $("#pageContent").innerHTML=html;
+  }
+  async function renderFinance(){
+    const [o,a,e,b]=await Promise.all([safe(api("analytics","finance.overview")),safe(api("analytics","finance.accounts.list")),safe(api("analytics","finance.entries.list")),safe(api("analytics","finance.budgets.list"))]);
+    const fd=o.ok?(unwrap(o.data)?.finance||{}):{},accounts=a.ok?(unwrap(a.data)?.accounts||[]):[],entries=e.ok?(unwrap(e.data)?.entries||[]):[],budgets=b.ok?(unwrap(b.data)?.budgets||[]):[];
+    state.cache.finance={finance:fd,accounts,entries,budgets};const canA=!!state.permissionMap["finance.accounts.manage"],canE=!!state.permissionMap["finance.entries.manage"],canB=!!state.permissionMap["finance.budgets.manage"];
+    const tab=state.financeTab||"overview",tabs=[["overview","Overview"],["accounts","Accounts"],["journal","Journal"],["budgets","Budgets"]];
+    const tabBar=`<div class="os-module-tabs">${{tabs.map(x=>`<button class="${{tab===x[0]?"active":""}" data-finance-tab="${{x[0]}">${{x[1]}</button>`).join("")}</div>`;
+    const cash=accounts.filter(x=>x.account_type==="asset"),curr=[...new Set(cash.map(x=>x.currency_code))],money=(n,c)=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c,maximumFractionDigits:2}).format(Number(n||0));}catch(_){return c+" "+fmtNum(n);}};
+    const totals=curr.map(c=>stat("Assets · "+c,money(cash.filter(x=>x.currency_code===c).reduce((s,x)=>s+Number(x.current_balance||0),0),c),"Posted balances","wallet")).join("")||stat("Asset balances","—","No posted balances","wallet");
+    const ar=accounts.map(x=>`<tr><td><b>${{esc(x.account_code)}</b><small>${{esc(x.name)}</small></td><td>${{pill(x.account_type)}</td><td>${{esc(x.currency_code)}</td><td>${{money(x.current_balance,x.currency_code)}</td><td>${{x.is_system?pill("system"):canA?('<button class="btn btn-small btn-secondary" data-act="finance-account-state" data-id="'+esc(x.id)+'">'+(x.is_active?"Deactivate":"Activate")+'</button>'):pill(x.is_active?"active":"inactive")}</td></tr>`);
+    const er=entries.map(x=>`<tr><td>${{fmtDate(x.entry_date)}</td><td><b>${{esc(x.reference||"—")}</b><small>${{esc(x.description)}</small></td><td>${{esc(x.currency_code)}</td><td>${{pill(x.status)}</td><td>${{fmtDate(x.posted_at)}</td></tr>`);
+    const br=budgets.map(x=>`<tr><td><b>${{esc(x.name)}</b><small>${{fmtDate(x.period_start)} – ${{fmtDate(x.period_end)}</small></td><td>${{money(x.amount,x.currency_code)}</td><td>${{pill(x.status)}</td><td>${{canB&&x.status!=="archived"?('<button class="btn btn-small btn-secondary" data-act="finance-budget-state" data-id="'+esc(x.id)+'" data-status="'+(x.status==="active"?"paused":"active")+'">'+(x.status==="active"?"Pause":"Resume")+'</button><button class="btn btn-small btn-quiet" data-act="finance-budget-state" data-id="'+esc(x.id)+'" data-status="archived">Archive</button>'):pill(x.status)}</td></tr>`);
+    const addA=canA?'<button class="btn btn-primary" data-act="finance-account-create">＋ New account</button>':"",addE=canE?'<button class="btn btn-primary" data-act="finance-entry-create">＋ Record entry</button>':"",addB=canB?'<button class="btn btn-primary" data-act="finance-budget-create">＋ New budget</button>':"";
+    let body="";
+    if(tab==="overview")body=`<div class="os-kpi-grid">${{totals}${{stat("Accounts",fmtNum(accounts.length),"Chart of accounts","list-tree")}${{stat("Journal entries",fmtNum(entries.length),"Ledger records","book-open")}${{stat("Active budgets",fmtNum(budgets.filter(x=>x.status==="active").length),"Budget register","target")}</div><div class="os-lower-grid"><section class="os-surface"><header><div><span class="os-eyebrow">GENERAL LEDGER</span><h2>Latest entries</h2></div><button class="btn btn-quiet" data-finance-tab="journal">Open journal ↗</button></header>${{table(["Date","Description","Currency","Status","Posted"],er.slice(0,8))}</section><section class="os-surface"><header><div><span class="os-eyebrow">PLANNING</span><h2>Budget register</h2></div><button class="btn btn-quiet" data-finance-tab="budgets">All budgets ↗</button></header>${{table(["Budget","Amount","Status",""],br.slice(0,8))}</section></div><p class="os-disclaimer">Nexus finance is an internal ledger, not a bank connection. Posted balances are grouped by currency. No sample transactions have been created.</p>`;
+    else if(tab==="accounts")body=`<section class="os-surface"><header><div><span class="os-eyebrow">CHART OF ACCOUNTS</span><h2>Organisation accounts</h2></div>${{addA}</header>${{table(["Account","Type","Currency","Balance","Status"],ar)}</section>`;
+    else if(tab==="journal")body=`<section class="os-surface"><header><div><span class="os-eyebrow">DOUBLE-ENTRY LEDGER</span><h2>Journal register</h2><p>Entries post only when debit and credit totals balance.</p></div>${{addE}</header>${{table(["Date","Reference / description","Currency","Status","Posted"],er)}</section>`;
+    else body=`<section class="os-surface"><header><div><span class="os-eyebrow">BUDGET PLANNING</span><h2>Budget register</h2></div>${{addB}</header>${{table(["Budget","Amount","Status",""],br)}</section>`;
+    let html=pageHead("finance",`<button class="btn btn-secondary" data-act="refresh">↻ Refresh</button>${{tab==="overview"?addE:""}`,"Finance operations with chart of accounts, balanced journal and budgets.")+tabBar+body;
+    $("#pageContent").innerHTML=html;
+  }
+  function createFinanceAccount(){openForm({title:"Create finance account",description:"Add an organisation-scoped account.",fields:[{name:"account_code",label:"Account code",required:true,max:24},{name:"name",label:"Account name",required:true,max:120},{name:"account_type",label:"Account type",type:"select",required:true,options:["asset","liability","equity","revenue","expense"].map(x=>[x,x])},{name:"normal_balance",label:"Normal balance",type:"select",required:true,options:[["debit","Debit"],["credit","Credit"]]},{name:"currency_code",label:"Currency code",value:"NGN",required:true,max:3},{name:"description",label:"Description",type:"textarea",max:1000,span:2}],submitLabel:"Create account",onSubmit:async v=>{await api("analytics","finance.accounts.create",v);await closeModal();state.financeTab="accounts";notify("Finance account created.","success");await renderFinance();}});}
+  function createFinanceEntry(){
+    const accounts=(state.cache.finance?.accounts||[]).filter(x=>x.is_active),curr=[...new Set(accounts.map(x=>x.currency_code))],currency=curr.includes("NGN")?"NGN":curr[0]||"NGN",opts=accounts.filter(x=>x.currency_code===currency).map(x=>[x.id,x.account_code+" · "+x.name]);
+    if(opts.length<2)return notify("Create two active accounts in the same currency first.","error");
+    openForm({title:"Record balanced journal entry",description:"Select debit and credit accounts in the same currency. The server validates the entry atomically.",fields:[{name:"entry_date",label:"Entry date",type:"date",required:true,value:new Date().toISOString().slice(0,10)},{name:"reference",label:"Reference",max:120},{name:"description",label:"Description",required:true,max:2000,span:2},{name:"currency_code",label:"Currency",type:"select",required:true,value:currency,options:curr.map(x=>[x,x])},{name:"debit_account_id",label:"Debit account",type:"select",required:true,options:opts},{name:"credit_account_id",label:"Credit account",type:"select",required:true,options:opts},{name:"amount",label:"Amount",type:"number",required:true,min:0.01},{name:"memo",label:"Line memo",max:500,span:2}],submitLabel:"Validate and post",onSubmit:async v=>{if(v.debit_account_id===v.credit_account_id)throw new Error("Choose two different accounts.");const amount=Number(v.amount);if(!Number.isFinite(amount)||amount<=0)throw new Error("Enter a positive amount.");await api("analytics","finance.entries.create",{entry_date:v.entry_date,reference:v.reference,description:v.description,currency_code:v.currency_code,lines:[{account_id:v.debit_account_id,debit:amount,credit:0,memo:v.memo||null},{account_id:v.credit_account_id,debit:0,credit:amount,memo:v.memo||null}]});await closeModal();state.financeTab="journal";notify("Balanced journal entry posted.","success");await renderFinance();}});
+  }
+  function createFinanceBudget(){const accounts=(state.cache.finance?.accounts||[]).filter(x=>x.is_active);openForm({title:"Create finance budget",description:"Budgets are planning records and do not initiate payments.",fields:[{name:"name",label:"Budget name",required:true,max:120},{name:"amount",label:"Budget amount",type:"number",required:true,min:0.01},{name:"currency_code",label:"Currency",type:"select",required:true,value:"NGN",options:[...new Set(accounts.map(x=>x.currency_code).concat(["NGN"]))].map(x=>[x,x])},{name:"period_start",label:"Period start",type:"date",required:true,value:new Date().toISOString().slice(0,10)},{name:"period_end",label:"Period end",type:"date",required:true,value:new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)},{name:"account_id",label:"Linked account (optional)",type:"select",options:[["","No linked account"],...accounts.map(x=>[x.id,x.account_code+" · "+x.name])]},{name:"notes",label:"Notes",type:"textarea",max:2000,span:2}],submitLabel:"Save budget",onSubmit:async v=>{if(!v.account_id)v.account_id=null;await api("analytics","finance.budgets.create",v);await closeModal();state.financeTab="budgets";notify("Budget created.","success");await renderFinance();}});}
+  async function updateFinanceAccount(id){const a=(state.cache.finance?.accounts||[]).find(x=>x.id===id);if(!a||a.is_system)return;await api("analytics","finance.accounts.update",{account_id:id,is_active:!a.is_active});notify("Account status updated.","success");await renderFinance();}
+  async function updateFinanceBudget(id,status){await api("analytics","finance.budgets.update",{budget_id:id,status});notify("Budget status updated.","success");await renderFinance();}
 
   // PROJECTS AND EXECUTION
   async function fetchProjects(){const d=await api("projects","list_projects");const data=records(d,"projects");state.cache.projects=data;return data;}
@@ -763,10 +731,17 @@
     };
   }
 
+
+  function getPrivacyConsent(){try{return JSON.parse(localStorage.getItem("nexus_privacy_consent_v1")||"null");}catch(_){return null;}}
+  function savePrivacyConsent(analytics){const v={essential:true,analytics:!!analytics,updated_at:new Date().toISOString()};localStorage.setItem("nexus_privacy_consent_v1",JSON.stringify(v));$("#cookieConsent")?.classList.add("hidden");return v;}
+  function showPrivacyBanner(){const b=$("#cookieConsent");if(b)b.classList.toggle("hidden",!!getPrivacyConsent());}
+  function trackEvent(eventKey,pageKey=null){const c=getPrivacyConsent();if(!c?.analytics||!state.user||!state.workspace?.id||!window.crypto?.randomUUID)return;void api("analytics","events.ingest",{analytics_consent:true,events:[{client_event_id:crypto.randomUUID(),event_key:eventKey,page_key:pageKey}]}).catch(()=>{});}
+  function openPrivacySettings(){const c=getPrivacyConsent()||{analytics:false};openForm({title:"Privacy preferences",description:"Essential storage supports secure sign-in. Optional analytics is disabled unless you explicitly enable it. Nexus never records prompts, messages, form values, credentials or documents.",fields:[{name:"essential",label:"Essential storage (required for authentication)",type:"checkbox",value:true,span:2,help:"Always on. Your secure session depends on it."},{name:"analytics",label:"Allow privacy-minimised Nexus analytics",type:"checkbox",value:c.analytics===true,span:2,help:"Optional. Only module event type and timestamp are saved."}],submitLabel:"Save preferences",onSubmit:async v=>{savePrivacyConsent(v.analytics);await closeModal();notify("Privacy preferences saved.","success");if(v.analytics)trackEvent("page_view",state.currentPage);}});}
+
   // TABLE FILTERING AND COMMAND PALETTE.
   function filterTableRows(predicate){document.querySelectorAll("#pageContent tbody tr").forEach(row=>{const q=document.querySelector("[data-local-filter]")?.value?.toLowerCase()||"";const search=(row.dataset.search||row.textContent||"").toLowerCase();row.hidden=!(predicate?predicate(row):true)||!!q&&!search.includes(q);});}
   function bindFilters(){const input=document.querySelector("[data-local-filter]");if(input)input.addEventListener("input",()=>filterTableRows());}
-  const COMMANDS=[...Object.entries(PAGE).map(([page,v])=>({label:v[0],detail:v[1],page})),{label:"Create a project",detail:"Start a new delivery project",act:"create-project"},{label:"Create a task",detail:"Add work to a project",act:"create-task"},{label:"Invite a teammate",detail:"Prepare a Nexus invitation",act:"invite-member"},{label:"Add a client",detail:"Register a client account",act:"create-client"},{label:"Register a product",detail:"Add to the company portfolio",act:"create-product"},{label:"Ask DVNM Intelligence",detail:"Open company intelligence",page:"intelligence"},{label:"Upload a private document",detail:"Add a controlled project document",act:"upload-document"},{label:"New announcement",detail:"Prepare a company update",act:"create-announcement"}];
+  const COMMANDS=[...Object.entries(PAGE).map(([page,v])=>({label:v[0],detail:v[1],page})),{label:"Create a finance entry",detail:"Post a balanced debit and credit",act:"finance-entry-create"},{label:"Create a finance budget",detail:"Create or manage a company budget",act:"finance-budget-create"},{label:"Create a project",detail:"Start a new delivery project",act:"create-project"},{label:"Create a task",detail:"Add work to a project",act:"create-task"},{label:"Invite a teammate",detail:"Prepare a Nexus invitation",act:"invite-member"},{label:"Add a client",detail:"Register a client account",act:"create-client"},{label:"Register a product",detail:"Add to the company portfolio",act:"create-product"},{label:"Ask DVNM Intelligence",detail:"Open company intelligence",page:"intelligence"},{label:"Upload a private document",detail:"Add a controlled project document",act:"upload-document"},{label:"New announcement",detail:"Prepare a company update",act:"create-announcement"}];
   function showCommand(){const back=$("commandBackdrop");back.classList.remove("hidden");$("commandSearch").value="";renderCommandResults("");setTimeout(()=>$ ("commandSearch")?.focus(),20);}
   function hideCommand(){ $("commandBackdrop").classList.add("hidden"); }
   function renderCommandResults(query){const matches=COMMANDS.filter(x=>`${x.label} ${x.detail}`.toLowerCase().includes(query.toLowerCase()));state.commandMatches=matches;state.commandIndex=0;$ ("commandResults").innerHTML=matches.map((x,i)=>`<button class="command-result ${i===0?"active":""}" data-command-index="${i}"><span class="command-result-icon">${x.page?"◈":"＋"}</span><span><b>${esc(x.label)}</b><small>${esc(x.detail)}</small></span><kbd>${x.page?"Open":"Action"}</kbd></button>`).join("")||empty("No commands found","Try a module name or action.");document.querySelectorAll("[data-command-index]").forEach(b=>b.onclick=()=>executeCommand(Number(b.dataset.commandIndex)));}
@@ -778,6 +753,8 @@
     try{
       switch(act){
         case "refresh":case "ai-refresh":await (act==="ai-refresh"?renderIntelligence():refresh());break;
+        case "analytics-consent":openPrivacySettings();break;
+        case "finance-account-create":createFinanceAccount();break;case "finance-entry-create":createFinanceEntry();break;case "finance-budget-create":createFinanceBudget();break;case "finance-account-state":await updateFinanceAccount(id);break;case "finance-budget-state":await updateFinanceBudget(id,extra.status||"paused");break;
         case "create-project":await createProject();break;case "open-project":await openProject(id);break;case "edit-project":await editProject(id);break;
         case "create-task":if(!state.cache.projects?.length)await fetchProjects();createTask(extra.projectId||null);break;case "edit-task":await editTask(id);break;case "task-comments":await taskComments(id,extra.projectId);break;case "create-milestone":createMilestone(extra.projectId);break;case "edit-milestone":editMilestone(extra.projectId,id);break;case "create-project-decision":createProjectDecision(extra.projectId);break;
         case "create-client":createClient();break;case "edit-client":await editClient(id);break;case "member-profile":memberProfile(id);break;
@@ -800,21 +777,30 @@
   }
 
   // EVENT WIRING
-  function applyRoleNavigation(){const external=["client","investor"].includes(state.role);if(external&&!document.querySelector('#nav [data-page="portal"]')){const b=document.createElement("button");b.className="nav-item";b.dataset.page="portal";b.innerHTML='<span class="nav-icon">◈</span><span>My portal</span>';$("nav").appendChild(b);}document.querySelectorAll("#nav [data-page]").forEach(el=>{const p=el.dataset.page;el.hidden=external?!["portal","notifications","settings"].includes(p):p==="portal";});}
+  function applyRoleNavigation(){const external=["client","investor"].includes(state.role);if(external&&!document.querySelector('#nav [data-page="portal"]')){const b=document.createElement("button");b.className="nav-item";b.dataset.page="portal";b.innerHTML='<span class="nav-icon">◈</span><span>My portal</span>';$("nav").appendChild(b);}document.querySelectorAll("#nav [data-page]").forEach(el=>{const p=el.dataset.page;el.hidden=external?!["portal","notifications","settings"].includes(p):p==="portal";if(p==="analytics"&&!state.permissionMap["analytics.view"])el.hidden=true;if(p==="finance"&&!state.permissionMap["finance.view"])el.hidden=true;});}
   function wire(){
     document.querySelectorAll(".nav-icon[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
+    $("#cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
+    $("#cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});
+    $("#cookieCustomize")?.addEventListener("click",openPrivacySettings);showPrivacyBanner();
+    window.addEventListener("online",()=>{document.body.classList.remove("is-offline");notify("Nexus connection restored.","success");});
+    window.addEventListener("offline",()=>{document.body.classList.add("is-offline");notify("Offline mode · application shell remains available.","info");});
+    if(!navigator.onLine)document.body.classList.add("is-offline");
+    window.addEventListener("appinstalled",()=>trackEvent("pwa_installed"));
+    if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(err=>console.warn("Nexus offline shell",err)));
     $("openCommand").onclick=showCommand;$("topNotifications").onclick=()=>navigate("notifications");$("profileButton").onclick=()=>navigate("settings");$("workspaceSwitch").onclick=()=>navigate("settings");$("connectionDetails").onclick=()=>navigate("settings");
     $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");};
     $("collapseNav").onclick=()=>{$("app").classList.toggle("sidebar-collapsed");state.isCollapsed=$("app").classList.contains("sidebar-collapsed");};$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
     $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
     document.addEventListener("click",e=>{
+      const ft=e.target.closest("[data-finance-tab]");if(ft){state.financeTab=ft.dataset.financeTab;void renderFinance();return;}
       const page=e.target.closest("[data-page]");if(page){e.preventDefault();navigate(page.dataset.page);return;}
       const modalAct=e.target.closest("[data-modal-act]");if(modalAct){const a=modalAct.dataset.modalAct,id=modalAct.dataset.id,projectId=modalAct.dataset.project;closeModal();dispatchAction(a,id,{projectId});return;}
       const action=e.target.closest("[data-act]");if(action){e.preventDefault();dispatchAction(action.dataset.act,action.dataset.id,{projectId:action.dataset.project});}
     });
-    document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();if($("commandBackdrop").classList.contains("hidden"))showCommand();else hideCommand();}else if(e.key==="Escape"){hideCommand();if(!$ ("modalBackdrop").classList.contains("hidden"))closeModal();}else if(e.key==="/"&&!/input|textarea|select/i.test(document.activeElement?.tagName||"")){e.preventDefault();showCommand();}});
+    document.addEventListener("keydown",e=>{if(e.target?.id==="aiMessageInput"&&e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#aiComposer")?.requestSubmit();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();if($("commandBackdrop").classList.contains("hidden"))showCommand();else hideCommand();}else if(e.key==="Escape"){hideCommand();if(!$ ("modalBackdrop").classList.contains("hidden"))closeModal();}else if(e.key==="/"&&!/input|textarea|select/i.test(document.activeElement?.tagName||"")){e.preventDefault();showCommand();}});
   }
 
   document.addEventListener("DOMContentLoaded",()=>{wire();restore();});
