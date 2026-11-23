@@ -26,7 +26,9 @@ for relative in (
 ):
     require((ROOT / relative).is_file(), f"missing {relative}")
 
-require(any(p.name.endswith("_nexus_finance_ledger_immutability.sql") for p in (ROOT / "supabase/migrations").glob("*.sql")), "finance ledger hardening migration is not tracked")\n\nfor table in ("finance_accounts", "finance_journal_entries", "finance_journal_lines", "finance_budgets", "analytics_events"):
+require(any(p.name.endswith("_nexus_finance_ledger_immutability.sql") for p in (ROOT / "supabase/migrations").glob("*.sql")), "finance ledger hardening migration is not tracked")
+
+for table in ("finance_accounts", "finance_journal_entries", "finance_journal_lines", "finance_budgets", "analytics_events"):
     require(table in types, f"generated database types missing {table}")
     require(table in (ROOT / "supabase/migrations/20261123215144_nexus_finance_and_product_analytics.sql").read_text(encoding="utf-8"), f"initial finance migration missing {table}")
 
