@@ -17,7 +17,7 @@ The `index.ts` files in this directory are exported from the active deployed fun
 | `nexus-content` | 5 | enabled | Authenticated announcements and investor content |
 | `nexus-files` | 4 | enabled | Authenticated private document operations |
 | `nexus-invitations` | 5 | enabled | Authenticated invitation management |
-| `nexus-intelligence` | 14 | enabled | Authenticated DVNM Intelligence; General Assistant, Company Intelligence and greeting-only conversational path |
+| `nexus-intelligence` | 15 | enabled | Authenticated DVNM Intelligence; General Assistant, Company Intelligence and greeting-only conversational path |
 | `nexus-member-status` | 4 | enabled | Authenticated membership status |
 | `nexus-notifications` | 4 | enabled | Authenticated notifications plus configured secret mode |
 | `nexus-portal` | 4 | enabled | Authenticated client/investor portal |
