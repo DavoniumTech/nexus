@@ -93,10 +93,16 @@ async function main(){
       };
     `
   }));
+  const smokeConversationId = "11111111-1111-4111-8111-111111111111";
+  const mockConversations = [];
+  loginPage.on("dialog", dialog => dialog.accept());
   await loginPage.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
     const url = new URL(route.request().url());
+    const functionName = url.pathname.split("/").pop();
+    let body = {};
+    try { body = route.request().postDataJSON() || {}; } catch {}
     let payload = { success: true };
-    if (url.pathname.endsWith("/nexus-session")) {
+    if (functionName === "nexus-session") {
       payload = {
         success: true,
         identity: { display_name: "Nexus Smoke Test" },
@@ -108,16 +114,60 @@ async function main(){
           membership_status: "active"
         }]
       };
-    } else if (url.pathname.endsWith("/bright-task")) {
+    } else if (functionName === "bright-task") {
       payload = {
         permissions: [
           { key: "projects.create", allowed: true },
           { key: "finance.view", allowed: true },
-          { key: "analytics.view", allowed: true }
+          { key: "finance.accounts.manage", allowed: true },
+          { key: "finance.entries.manage", allowed: true },
+          { key: "finance.budgets.manage", allowed: true },
+          { key: "analytics.view", allowed: true },
+          { key: "intelligence.manage", allowed: true }
         ]
       };
-    } else if (url.pathname.endsWith("/nexus-notifications")) {
-      payload = { notifications: [] };
+    } else if (functionName === "nexus-notifications") {
+      payload = { success: true, notifications: [] };
+    } else if (functionName === "nexus-analytics") {
+      if (body.action === "analytics.dashboard") {
+        payload = { success: true, analytics: { events_30d: 4, events_7d: 3, active_users_30d: 1, daily: [{day:"2026-11-24",events:4}], top_pages: [] } };
+      } else if (body.action === "finance.analytics") {
+        payload = { success: true, analytics: { posted_entry_count: 0, sampling_limited: false, currencies: [] } };
+      } else {
+        payload = { success: true, analytics: {}, finance: { accounts: [], totals: {} }, accounts: [], entries: [], budgets: [] };
+      }
+    } else if (functionName === "nexus-intelligence") {
+      if (body.action === "health") {
+        payload = { success: true, gemini_configured: true, ledger_configured: true };
+      } else if (body.action === "policy.status") {
+        payload = { success: true, policy: { enabled: true, can_manage_settings: true, max_message_chars: 10000, max_output_tokens: 8192 } };
+      } else if (body.action === "usage.summary") {
+        payload = { success: true, usage: { requests_today: 0, requests_per_day_limit: 100, requests_last_5m: 0, requests_per_5m_limit: 10, tokens_today: 0, tokens_per_day_limit: 200000 } };
+      } else if (body.action === "conversations.list") {
+        payload = { success: true, conversations: mockConversations.map(x => ({...x})) };
+      } else if (body.action === "conversation.create") {
+        const conversation = { id: smokeConversationId, title: body.title || "New conversation", assistant_mode: body.assistant_mode || "company", status: "active", updated_at: new Date().toISOString() };
+        if (!mockConversations.some(x => x.id === conversation.id)) mockConversations.push(conversation);
+        Object.assign(mockConversations.find(x => x.id === conversation.id), conversation);
+        payload = { success: true, conversation };
+      } else if (body.action === "conversation.get") {
+        const conversation = mockConversations.find(x => x.id === body.conversation_id);
+        payload = { success: true, conversation: conversation || {}, messages: [] };
+      } else if (body.action === "conversation.rename") {
+        const conversation = mockConversations.find(x => x.id === body.conversation_id);
+        if (conversation) { conversation.title = body.title; conversation.updated_at = new Date().toISOString(); }
+        payload = { success: true, conversation: conversation || {} };
+      } else if (body.action === "conversation.archive" || body.action === "conversation.unarchive") {
+        const conversation = mockConversations.find(x => x.id === body.conversation_id);
+        if (conversation) { conversation.status = body.action === "conversation.archive" ? "archived" : "active"; }
+        payload = { success: true, conversation: conversation || {} };
+      } else if (body.action === "conversation.delete") {
+        const at = mockConversations.findIndex(x => x.id === body.conversation_id);
+        if (at >= 0) mockConversations.splice(at, 1);
+        payload = { success: true, deleted: true };
+      } else if (body.action === "chat") {
+        payload = { success: true, answer: "Hello from DVNM Intelligence.", tools_used: [], data_sources_used: [], usage: { input_tokens: 5, output_tokens: 12, estimated_cost_usd: 0.0001 }, generated_at: new Date().toISOString() };
+      }
     }
     await route.fulfill({
       status: 200,
@@ -147,8 +197,71 @@ async function main(){
     "Authenticated dashboard must render company modules");
   await loginContext.close();
 
+  // Test all four appearance modes from the real settings panel.
+  await loginPage.locator('#nav [data-page="settings"]').click();
+  await loginPage.waitForSelector('[data-act="theme-black"]', { state: "visible" });
+  await loginPage.locator('[data-act="theme-black"]').click();
+  assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("black-theme")),
+    "Elevated Black must apply a separate black theme");
+  await loginPage.locator('[data-act="theme-light"]').click();
+  assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme")),
+    "Light theme must be distinct from Elevated Black");
+  await loginPage.locator('[data-act="theme-system"]').click();
+  assert.equal(await loginPage.evaluate(() => localStorage.getItem("nexus_theme")), "system",
+    "System appearance preference must persist");
+  await loginPage.locator('[data-act="theme-dark"]').click();
+  assert.ok(await loginPage.evaluate(() => !document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme")),
+    "Navy Dark must remain distinct from Light and Elevated Black");
+
+  // Exercise Company Intelligence and the complete conversation lifecycle.
+  await loginPage.locator('#nav [data-page="intelligence"]').click();
+  await loginPage.waitForSelector("#aiModeSelect");
+  await loginPage.locator("#aiModeSelect").selectOption("company");
+  await loginPage.waitForSelector('[data-ai-conversation]');
+  await loginPage.locator("#aiMessageInput").fill("hello");
+  await loginPage.locator("#aiSend").click();
+  await loginPage.waitForSelector(".ai-message.assistant .ai-message-content");
+  assert.ok((await loginPage.locator(".ai-message.assistant .ai-message-content").last().textContent()).includes("Hello from DVNM Intelligence"),
+    "Company Intelligence chat should render its assistant response");
+  assert.ok(await loginPage.locator(".ai-brand-logo").count() === 1,
+    "DVNM Intelligence header must display the official Davonium logo");
+
+  const openConversationMenu = async () => {
+    await loginPage.locator('.ai-thread-menu[data-act="ai-manage-conversation"]').first().click();
+    await loginPage.waitForSelector("#field-operation");
+  };
+  await openConversationMenu();
+  await loginPage.locator("#field-title").fill("Edited smoke conversation");
+  await loginPage.locator("#field-operation").selectOption("rename");
+  await loginPage.locator("#submitDynamicForm").click();
+  await loginPage.waitForFunction(() => document.querySelector(".ai-thread b")?.textContent === "Edited smoke conversation");
+  assert.ok(await loginPage.locator(".ai-thread.active").count() === 1,
+    "Renaming a conversation must preserve the active selected chat");
+
+  await openConversationMenu();
+  await loginPage.locator("#field-operation").selectOption("archive");
+  await loginPage.locator("#submitDynamicForm").click();
+  await loginPage.waitForSelector(".ai-thread-menu[data-act='ai-manage-conversation']");
+  assert.equal(await loginPage.locator(".ai-thread.active").count(), 0,
+    "Archiving the selected conversation must clear the active selection");
+
+  await openConversationMenu();
+  await loginPage.locator("#field-operation").selectOption("unarchive");
+  await loginPage.locator("#submitDynamicForm").click();
+  await loginPage.waitForFunction(() => document.querySelector(".ai-thread.active")?.textContent.includes("Edited smoke conversation"));
+  assert.ok(await loginPage.locator(".ai-thread.active").count() === 1,
+    "Restoring a conversation must make it active and selectable again");
+
+  await openConversationMenu();
+  await loginPage.locator("#field-operation").selectOption("delete");
+  await loginPage.locator("#submitDynamicForm").click();
+  await loginPage.waitForFunction(() => document.querySelectorAll("[data-ai-conversation]").length === 0);
+  assert.equal(mockConversations.length, 0, "Deleting a conversation must remove it from the list");
+  await loginContext.close();
+
+
   assert.deepEqual(errors,[],"Browser page errors must be empty");
-  console.log("Nexus application contract, responsive sign-in, and authenticated dashboard smoke tests passed.");
+  console.log("Nexus responsive UI, authentication, four themes, DVNM chat and conversation lifecycle smoke tests passed.");
  }finally{await browser.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
