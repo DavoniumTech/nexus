@@ -927,13 +927,18 @@ async function runIntelligence(
   let gotToolCall = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    const remainingOutputBudget = maxOutputTokens - outputTokens;
+    const remainingInputBudget = inputTokenLimit - inputTokens;
+    if (remainingOutputBudget < 1 || remainingInputBudget < 1) {
+      throw new Error("AI_REQUEST_TOKEN_BUDGET_EXHAUSTED");
+    }
     const payload = await callGemini(
       apiKey,
       contents,
       declarations,
       systemInstruction,
-      maxOutputTokens,
-      inputTokenLimit
+      remainingOutputBudget,
+      remainingInputBudget
     );
 
     const usage = asObject(payload.usageMetadata);
@@ -1238,7 +1243,8 @@ export default {
             ledger_configured: ledgerKey.length >= 32,
             persistent_conversations: true,
             server_side_quotas: true,
-            company_only_scope: true,
+            company_data_mode: true,
+          general_assistant_mode: true,
             read_only: true,
             checked_at: new Date().toISOString()
           });
@@ -1479,7 +1485,7 @@ export default {
         }
 
         if (action === "policy.enable" || action === "policy.disable") {
-          if (!can("intelligence.settings.manage") || !["owner", "admin"].includes(String(membership.role))) {
+          if (!can("intelligence.manage") || !["owner", "admin"].includes(String(membership.role))) {
             return reply({ success: false, code: "AI_SETTINGS_PERMISSION_REQUIRED", error: "Only an authorised Nexus owner or administrator can change DVNM Intelligence settings." }, 403);
           }
           const enabling = action === "policy.enable";
