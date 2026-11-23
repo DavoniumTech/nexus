@@ -33,7 +33,21 @@ edge = EDGE.read_text(encoding="utf-8")
 app = APP.read_text(encoding="utf-8")
 html = INDEX.read_text(encoding="utf-8")
 
+edge_function_slugs = [
+    "bright-task", "nexus-audit", "nexus-command-center", "nexus-communications",
+    "nexus-content", "nexus-files", "nexus-invitations", "nexus-intelligence",
+    "nexus-member-status", "nexus-monitor", "nexus-notifications", "nexus-portal",
+    "nexus-projects", "nexus-session", "nexus-workspace", "nexus-workspace-admin",
+    "nexus-analytics",
+]
+missing_edge_sources = [
+    slug for slug in edge_function_slugs
+    if not (ROOT / "supabase" / "functions" / slug / "index.ts").is_file()
+]
+
 contracts = {
+    "all deployed Edge Function sources are version-controlled": not missing_edge_sources,
+    "deployment manifest is present": (ROOT / "supabase" / "functions" / "DEPLOYMENT-MANIFEST.md").is_file(),
     "four-argument AI reservation RPC": "p_server_key text" in guard,
     "direct three-argument reservation is revoked": "nexus_ai_reserve_request(uuid, uuid, uuid)" in guard and "FROM PUBLIC, anon, authenticated" in guard,
     "ledger credential hash validation": "private.nexus_ai_server_keys" in guard and "extensions.digest" in guard,
