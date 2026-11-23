@@ -19,12 +19,12 @@ The current remote database reported no migration history at the time of the ini
 
 The tracked migration raises app limits to:
 - 100 requests per day and 10 per five minutes.
-- 8,000 characters per input.
-- 12 history messages.
-- 16,000 estimated input tokens per request.
-- 2,000 output tokens per request.
-- 100,000 output tokens per day.
-- 12,000 response characters.
+- 10,000 characters per input.
+- 16 history messages.
+- 30,000 estimated input tokens per request.
+- 8,192 output tokens per response.
+- 200,000 output tokens per day.
+- 40,000 response characters.
 
 The existing $1 monthly estimated-cost ceiling remains unchanged. Google Gemini Free Tier currently advertises zero token charges for eligible models, but says submitted content may be used to improve Google products. Enabling company-data analysis therefore requires an explicit organisation decision about that data transfer. The provider's quotas are not controlled by Nexus and may be lower than the local app limits.
 
