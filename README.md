@@ -9,8 +9,8 @@ A responsive, static web application for the existing Davonium Technologies Supa
 - Company operations: client accounts, members, invitations, role and membership administration, teams, departments, and permission overrides.
 - Product operations: product catalogue, metric definitions, verified metrics, manual-metric review, metric history, integration records, ingestion history, and release notes.
 - Governance: objectives, key results, decision ledger, weekly company reviews, investor updates, and investor access.
-- Secure collaboration: private document upload/download, controlled client visibility, channels, direct messages, membership administration, moderation, announcements, and personal inbox/preferences.
-- DVNM Intelligence: persistent **General Assistant** and **Company Intelligence** conversations. General Assistant does not query company records; Company Intelligence uses permission-scoped, read-only Nexus data tools. Both use server-side request, input, output-token and monthly-cost safeguards. Owner controls expose capacity settings.
+- Secure collaboration: private document upload/download, controlled client visibility, channels, direct messages, membership administration, moderation, announcements, personal inbox/preferences, and authenticated Realtime updates.
+- DVNM Intelligence: persistent **General Assistant** and **Company Intelligence** conversations, with authenticated Realtime refresh for private messages and conversation updates. General Assistant does not query company records; Company Intelligence uses permission-scoped, read-only Nexus data tools. Both use server-side request, input, output-token and monthly-cost safeguards. Owner controls expose capacity settings.
 - Control: service telemetry, recorded service components, incidents, session assurance, audit history, effective permission catalogue, and secure connection settings.
 - Role-scoped client and investor portal pages.
 
