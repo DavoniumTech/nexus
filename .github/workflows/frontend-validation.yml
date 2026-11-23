@@ -21,7 +21,9 @@ jobs:
         with:
           node-version: "22"
       - name: Validate JavaScript syntax
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check service-worker.js
       - name: Validate Supabase and frontend contracts
         run: python scripts/backend-contract-check.py
       - name: Validate required static assets
@@ -35,7 +37,8 @@ jobs:
               "index.html", "styles.css", "app.js", "favicon.svg",
               "assets/branding/davonium-d-icon.webp",
               "assets/branding/davonium-nexus.svg",
-              "assets/branding/davonium-starfield.svg",\n              "manifest.webmanifest", "service-worker.js", "offline.html"
+              "assets/branding/davonium-starfield.svg",
+              "manifest.webmanifest", "service-worker.js", "offline.html",\n              "manifest.webmanifest", "service-worker.js", "offline.html"
           ]
           missing = [item for item in required if not (root / item).is_file()]
           if missing:
