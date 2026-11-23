@@ -666,3 +666,22 @@ button,input,select,textarea{font-size:inherit}
   .ai-workspace-head p{font-size:13px}
   .ai-composer-foot{align-items:center}
 }
+
+
+/* Overview layout: keep every dashboard column within narrow viewports. */
+@media(max-width:760px){
+  html{max-width:100%;overflow-x:clip}
+  body,#app,.main-shell,.main-content,#pageContent{max-width:100%;min-width:0}
+  .overview-grid{grid-template-columns:minmax(0,1fr)!important;min-width:0}
+  .overview-grid>div{width:100%;min-width:0}
+  .overview-hero{display:block;min-width:0}
+  .overview-hero .hero-content{width:100%;max-width:100%;min-width:0}
+  .overview-hero-mark{display:none}
+  .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){
+  .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .overview-grid .panel{padding:15px}
+  .overview-grid .panel-head{gap:8px;flex-wrap:wrap}
+  .overview-grid .panel-link{white-space:nowrap}
+}
