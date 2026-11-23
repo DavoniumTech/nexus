@@ -71,7 +71,15 @@
     x: '<path d="m18 6-12 12M6 6l12 12"/>'
   };
 
-  const $ = id => document.getElementById(id);
+  // Bare names are element IDs; explicit CSS selectors use querySelector.
+  // This keeps legacy calls such as $("#app") from returning null after authentication.
+  const $ = selector => {
+    if (typeof selector !== "string") return null;
+    if (selector.startsWith("#") || selector.startsWith(".") || selector.startsWith("[")) {
+      return document.querySelector(selector);
+    }
+    return document.getElementById(selector);
+  };
   const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const fmtDate = value => { if (!value) return "—"; const d = new Date(value); return Number.isNaN(d.getTime()) ? esc(value) : d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}); };
   const fmtTime = value => { if (!value) return "—"; const d = new Date(value); return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}); };
