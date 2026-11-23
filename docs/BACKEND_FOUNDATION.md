@@ -29,6 +29,10 @@ The tracked migration raises app limits to:
 
 The existing $1 monthly estimated-cost ceiling remains unchanged. Google Gemini Free Tier currently advertises zero token charges for eligible models, but says submitted content may be used to improve Google products. Enabling company-data analysis therefore requires an explicit organisation decision about that data transfer. The provider's quotas are not controlled by Nexus and may be lower than the local app limits.
 
+## Query and join indexes
+
+The `nexus_core_join_indexes` migration adds targeted composite indexes for organisation-scoped membership, invitations, channel membership, direct conversations/messages, notifications, team membership, product metrics/releases, project membership/documents/milestones/decisions, assigned tasks and service incident lookups. It is additive and preserves all existing indexes. Supabase's unindexed-FK advisory count decreased from 86 to 62. The remaining warnings are largely single-user audit references or less-used relationship paths; do not blanket-index them. Newly added indexes can appear in the unused-index advisory until real workload arrives. Reassess with representative production queries before removing any index.
+
 ## Realtime delivery
 
 The existing `supabase_realtime` publication already contains the secured collaboration, task, notification and service tables. The tracked `nexus_realtime_intelligence` migration adds `nexus_ai_conversations` and `nexus_ai_messages`. The browser subscribes with the authenticated Supabase client and organisation filters; table RLS remains authoritative. The current implementation subscribes to INSERT and UPDATE only (never DELETE events) and removes the channel on sign-out. The design uses Postgres Changes for the early company deployment; evaluate private Broadcast channels and server-authorised fan-out before scaling to large subscriber counts. The Supabase Free plan has finite Realtime limits.
