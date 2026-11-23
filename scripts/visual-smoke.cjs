@@ -222,11 +222,34 @@ const themes = [
     await overviewPage.screenshot({ path: path.join(outputDir, "overview-desktop.png"), fullPage: true });
     await overviewPage.setViewportSize({ width: 390, height: 844 });
     await overviewPage.waitForTimeout(150);
-    const mobileOverview = await overviewPage.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth
-    }));
-    if (mobileOverview.scrollWidth > mobileOverview.clientWidth + 1) failures.push("fixture overview: mobile layout has horizontal overflow");
+    const mobileOverview = await overviewPage.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const overflowElements = [...document.querySelectorAll("body *")].map(element => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName.toLowerCase(),
+          id: element.id || "",
+          className: typeof element.className === "string" ? element.className.slice(0, 120) : "",
+          left: Math.round(rect.left * 10) / 10,
+          right: Math.round(rect.right * 10) / 10,
+          width: Math.round(rect.width * 10) / 10,
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX
+        };
+      }).filter(item => item.right > width + 1 || item.left < -1)
+        .sort((a,b) => (b.right-width) - (a.right-width))
+        .slice(0, 12);
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: width,
+        overflowElements
+      };
+    });
+    if (mobileOverview.scrollWidth > mobileOverview.clientWidth + 1) {
+      failures.push("fixture overview: mobile layout has horizontal overflow: " + JSON.stringify(mobileOverview.overflowElements));
+    }
     await overviewPage.screenshot({ path: path.join(outputDir, "overview-mobile.png"), fullPage: true });
     await overviewContext.close();
 
