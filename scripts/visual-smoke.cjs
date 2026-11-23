@@ -118,6 +118,8 @@ const themes = [
     }));
     await overviewContext.route("https://fonts.googleapis.com/**", route => route.abort());
     await overviewContext.route("https://fonts.gstatic.com/**", route => route.abort());
+    const aiFixtureConversations = [];
+    let aiFixtureSequence = 0;
     await overviewContext.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
       const endpoint = new URL(route.request().url()).pathname.split("/").pop();
       const requestBody = route.request().postDataJSON() || {};
@@ -171,6 +173,46 @@ const themes = [
         payload = { data: { services: [{ display_name: "Nexus API", status: "operational", last_checked_at: "2026-11-20T08:00:00Z" }] } };
       } else if (endpoint === "nexus-monitor" && requestBody.action === "integrations.list") {
         payload = { data: { integrations: [{ id: "integration-1", display_name: "Metrics feed", state: "active", last_test_status: "passed" }] } };
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "health") {
+        payload = { success: true, assistant: "DVNM Intelligence", model: "gemini-3.5-flash-lite", gemini_configured: true, ledger_configured: true, persistent_conversations: true, read_only: true };
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "policy.status") {
+        payload = { success: true, policy: {
+          enabled: false, provider_privacy_confirmed: false, provider_free_tier_confirmed: false,
+          max_requests_per_day: 100, max_requests_per_5m: 10, max_tokens_per_day: 200000,
+          max_output_tokens: 8192, max_message_chars: 10000, max_history_messages: 16,
+          max_input_tokens: 30000, max_response_characters: 40000, monthly_budget_usd: 1,
+          can_manage_settings: true
+        }};
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "usage.summary") {
+        payload = { success: true, usage: {
+          requests_today: 7, requests_per_day_limit: 100, requests_last_5m: 1, requests_per_5m_limit: 10,
+          tokens_today: 2400, tokens_per_day_limit: 200000, output_tokens_per_request_limit: 8192,
+          estimated_cost_this_month_usd: 0, monthly_budget_usd: 1, enabled: false
+        }};
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "capabilities") {
+        payload = { success: true, capabilities: {
+          general_purpose_chat: true, projects: true, tasks: true, clients: true,
+          products: true, verified_metrics: true, persistent_conversations: true
+        }};
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "conversations.list") {
+        payload = { success: true, conversations: aiFixtureConversations };
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "conversation.create") {
+        const conversation = {
+          id: "fixture-ai-conversation-" + (++aiFixtureSequence),
+          title: requestBody.title || "New conversation",
+          status: "active",
+          assistant_mode: requestBody.assistant_mode === "company" ? "company" : "general",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_message_at: null
+        };
+        aiFixtureConversations.push(conversation);
+        payload = { success: true, conversation };
+      } else if (endpoint === "nexus-intelligence" && requestBody.action === "conversation.get") {
+        const conversation = aiFixtureConversations.find(item => item.id === requestBody.conversation_id);
+        payload = conversation
+          ? { success: true, conversation, messages: [] }
+          : { success: false, error: "Fixture conversation not found." };
       } else {
         payload = { data: {} };
       }
@@ -222,12 +264,70 @@ const themes = [
     await overviewPage.screenshot({ path: path.join(outputDir, "overview-desktop.png"), fullPage: true });
     await overviewPage.setViewportSize({ width: 390, height: 844 });
     await overviewPage.waitForTimeout(150);
-    const mobileOverview = await overviewPage.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth
-    }));
-    if (mobileOverview.scrollWidth > mobileOverview.clientWidth + 1) failures.push("fixture overview: mobile layout has horizontal overflow");
+    const mobileOverview = await overviewPage.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const overflowElements = [...document.querySelectorAll("body *")].map(element => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName.toLowerCase(),
+          id: element.id || "",
+          className: typeof element.className === "string" ? element.className.slice(0, 120) : "",
+          left: Math.round(rect.left * 10) / 10,
+          right: Math.round(rect.right * 10) / 10,
+          width: Math.round(rect.width * 10) / 10,
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX
+        };
+      }).filter(item => item.right > width + 1 || item.left < -1)
+        .sort((a,b) => (b.right-width) - (a.right-width))
+        .slice(0, 12);
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: width,
+        overflowElements
+      };
+    });
+    if (mobileOverview.scrollWidth > mobileOverview.clientWidth + 1) {
+      failures.push("fixture overview: mobile layout has horizontal overflow: " + JSON.stringify(mobileOverview.overflowElements));
+    }
     await overviewPage.screenshot({ path: path.join(outputDir, "overview-mobile.png"), fullPage: true });
+
+    // DVNM Intelligence UI fixture: verify mode separation and owner limit controls.
+    // The prior responsive assertion intentionally leaves the page at 390px;
+    // restore desktop width because the mobile sidebar is hidden off-canvas.
+    await overviewPage.setViewportSize({ width: 1440, height: 960 });
+    const intelligenceNav = overviewPage.locator('#nav [data-page="intelligence"]');
+    if (await intelligenceNav.count()) {
+      await intelligenceNav.click();
+      const aiReady = await overviewPage.waitForSelector("#aiModeSelect", { timeout: 10000 }).then(() => true).catch(() => false);
+      if (!aiReady) {
+        failures.push("DVNM Intelligence fixture did not render the mode selector");
+      } else {
+        const initialMode = await overviewPage.locator("#aiModeSelect").inputValue();
+        if (initialMode !== "general") failures.push("DVNM Intelligence fixture: new session should start in General Assistant mode");
+        if (!(await overviewPage.locator('[data-act="ai-manage-limits"]').count())) {
+          failures.push("DVNM Intelligence fixture: owner AI limits control is missing");
+        } else {
+          await overviewPage.locator('[data-act="ai-manage-limits"]').click();
+          const limitsForm = await overviewPage.waitForSelector('#nexusDynamicForm [name="daily_request_limit"]', { timeout: 5000 }).then(() => true).catch(() => false);
+          if (!limitsForm) failures.push("DVNM Intelligence fixture: AI limits form did not expose the daily request control");
+          await overviewPage.locator("#closeModal").click().catch(() => {});
+        }
+        await overviewPage.locator("#aiModeSelect").selectOption("company");
+        await overviewPage.waitForFunction(() => {
+          const heading = document.querySelector(".ai-workspace-head h2")?.textContent || "";
+          return heading === "Company intelligence.";
+        }, { timeout: 10000 }).catch(() => failures.push("DVNM Intelligence fixture: switching to Company Intelligence did not update the workspace"));
+        if (await overviewPage.locator("#aiModeSelect").inputValue() !== "company") {
+          failures.push("DVNM Intelligence fixture: Company Intelligence mode was not selected");
+        }
+      }
+    } else {
+      failures.push("DVNM Intelligence fixture: navigation entry is missing");
+    }
+
     await overviewContext.close();
 
   } finally {

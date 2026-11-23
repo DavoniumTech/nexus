@@ -4,3 +4,6 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# Local database exports contain private company data and must never be committed
+backups/
