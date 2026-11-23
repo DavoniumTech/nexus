@@ -3,7 +3,7 @@
 **Supabase project:** `davonium-nexus`  
 **Project reference:** `cmkroryimxskgqlaiiym`  
 **Organization:** Davonium Technologies  
-**Captured:** 2026-11-23  
+**Captured:** 2026-11-24  
 **Source:** Deployed function export from the connected Supabase project.
 
 The `index.ts` files in this directory are exported from the active deployed functions. Do not edit only the Dashboard copy. Make code changes in Git, validate them, then deploy the corresponding source.
@@ -17,7 +17,7 @@ The `index.ts` files in this directory are exported from the active deployed fun
 | `nexus-content` | 5 | enabled | Authenticated announcements and investor content |
 | `nexus-files` | 4 | enabled | Authenticated private document operations |
 | `nexus-invitations` | 5 | enabled | Authenticated invitation management |
-| `nexus-intelligence` | 12 | enabled | Authenticated DVNM Intelligence; general and company modes |
+| `nexus-intelligence` | 14 | enabled | Authenticated DVNM Intelligence; General Assistant, Company Intelligence and greeting-only conversational path |
 | `nexus-member-status` | 4 | enabled | Authenticated membership status |
 | `nexus-notifications` | 4 | enabled | Authenticated notifications plus configured secret mode |
 | `nexus-portal` | 4 | enabled | Authenticated client/investor portal |
@@ -25,7 +25,7 @@ The `index.ts` files in this directory are exported from the active deployed fun
 | `nexus-session` | 8 | enabled | Authenticated workspace session |
 | `nexus-workspace` | 5 | enabled | Authenticated workspace and people |
 | `nexus-workspace-admin` | 4 | enabled | Authenticated administrative operations |
-| `nexus-analytics` | 5 | disabled | Supports user and trusted server-secret modes; function enforces both paths |
+| `nexus-analytics` | 8 | disabled | Supports user and trusted server-secret modes; finance analytics reads posted entries only and enforces permissions |
 | `nexus-monitor` | 4 | disabled | Supports user and trusted server-secret monitoring mode; function enforces both paths |
 
 ## Security rules
