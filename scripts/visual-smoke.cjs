@@ -271,7 +271,10 @@ async function main(){
   await openConversationMenu();
   await loginPage.locator("#field-operation").selectOption("archive");
   await loginPage.locator("#submitDynamicForm").click();
-  await loginPage.waitForSelector(".ai-thread-menu[data-act='ai-manage-conversation']");
+  await loginPage.locator("#modalBackdrop").waitFor({ state: "hidden" });
+  assert.equal(mockConversations[0]?.status, "archived",
+    "The archive action must persist the archived state");
+  await loginPage.waitForFunction(() => document.querySelectorAll(".ai-thread.active").length === 0);
   assert.equal(await loginPage.locator(".ai-thread.active").count(), 0,
     "Archiving the selected conversation must clear the active selection");
 
