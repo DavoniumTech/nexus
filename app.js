@@ -586,7 +586,7 @@
     text=text.replace(fenced,(_,lang,body)=>{const id=code.length;code.push(`<pre class="ai-code-block"><div class="ai-code-label">${esc(lang||"code")}</div><code>${esc(body.replace(/\n$/,""))}</code></pre>`);return "%%CODE"+id+"%%";});
     text=esc(text);
     const tick=String.fromCharCode(96),inline=new RegExp(tick+"([^"+tick+"]+)"+tick,"g");
-    text=text.replace(inline,"<code class=\\"ai-inline-code\\">$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/\*([^*]+)\*/g,"<em>$1</em>");
+    text=text.replace(inline,'<code class="ai-inline-code">$1</code>').replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/\*([^*]+)\*/g,"<em>$1</em>");
     text=text.replace(/https?:\/\/[^\s<]+/g,url=>`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
     text=text.split(/\n{2,}/).map(block=>{const lines=block.split("\n");
       if(lines.every(line=>/^[-*]\s+/.test(line)))return "<ul>"+lines.map(line=>"<li>"+line.replace(/^[-*]\s+/,"")+"</li>").join("")+"</ul>";
