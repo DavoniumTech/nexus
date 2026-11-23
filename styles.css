@@ -456,7 +456,7 @@ body{font-size:16px;line-height:1.6;letter-spacing:0}
   --focus-ring:0 0 0 3px rgba(71,217,243,.22);
 }
 html{scroll-behavior:smooth;text-size-adjust:100%;-webkit-text-size-adjust:100%}
-body{font-size:15px;line-height:1.6;letter-spacing:0}
+body{font-size:16px;line-height:1.6;letter-spacing:0}
 button,input,select,textarea{font-size:inherit}
 .main-content{max-width:var(--content-max);padding:32px clamp(20px,2.8vw,48px) 42px}
 .topbar{height:72px;padding-inline:clamp(18px,2.5vw,42px)}
@@ -517,7 +517,7 @@ button,input,select,textarea{font-size:inherit}
 .btn-small{min-height:36px;padding:8px 12px;font-size:13px}
 .btn-primary{background:linear-gradient(110deg,#39c4df,#438ee5);box-shadow:0 8px 24px rgba(31,178,218,.16)}
 .field{gap:8px;font-size:14px}
-.field input,.field select,.field textarea,.control{min-height:46px;padding:12px 14px;border-radius:11px;font-size:15px}
+.field input,.field select,.field textarea,.control{min-height:46px;padding:12px 14px;border-radius:11px;font-size:16px}
 .field textarea{min-height:112px;line-height:1.6}
 .field-note{font-size:13px;line-height:1.55}
 .data-table-wrap{border-radius:14px;border:1px solid var(--line);overflow:auto}
