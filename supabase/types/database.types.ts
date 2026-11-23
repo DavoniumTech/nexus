@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          actor_user_id: string
+          client_event_id: string
+          created_at: string
+          event_key: string
+          id: string
+          occurred_at: string
+          organization_id: string
+          page_key: string | null
+        }
+        Insert: {
+          actor_user_id: string
+          client_event_id: string
+          created_at?: string
+          event_key: string
+          id?: string
+          occurred_at?: string
+          organization_id: string
+          page_key?: string | null
+        }
+        Update: {
+          actor_user_id?: string
+          client_event_id?: string
+          created_at?: string
+          event_key?: string
+          id?: string
+          occurred_at?: string
+          organization_id?: string
+          page_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           body: string
@@ -408,6 +449,259 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "departments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_accounts: {
+        Row: {
+          account_code: string
+          account_type: string
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          normal_balance: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_code: string
+          account_type: string
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          normal_balance: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_code?: string
+          account_type?: string
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          normal_balance?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_budgets: {
+        Row: {
+          account_id: string | null
+          amount: number
+          created_at: string
+          created_by: string
+          currency_code: string
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          created_at?: string
+          created_by: string
+          currency_code?: string
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          created_by?: string
+          currency_code?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_budgets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_budgets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "nexus_finance_account_balances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_budgets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_journal_entries: {
+        Row: {
+          created_at: string
+          created_by: string
+          currency_code: string
+          description: string
+          entry_date: string
+          id: string
+          organization_id: string
+          posted_at: string | null
+          posted_by: string | null
+          reference: string | null
+          source: string
+          status: string
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          currency_code?: string
+          description: string
+          entry_date: string
+          id?: string
+          organization_id: string
+          posted_at?: string | null
+          posted_by?: string | null
+          reference?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          currency_code?: string
+          description?: string
+          entry_date?: string
+          id?: string
+          organization_id?: string
+          posted_at?: string | null
+          posted_by?: string | null
+          reference?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_journal_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_journal_lines: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit: number
+          debit: number
+          id: string
+          journal_entry_id: string
+          line_number: number
+          memo: string | null
+          organization_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          id?: string
+          journal_entry_id: string
+          line_number: number
+          memo?: string | null
+          organization_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          id?: string
+          journal_entry_id?: string
+          line_number?: number
+          memo?: string | null
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "nexus_finance_account_balances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_journal_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_journal_lines_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2729,6 +3023,31 @@ export type Database = {
           },
         ]
       }
+      nexus_finance_account_balances: {
+        Row: {
+          account_code: string | null
+          account_type: string | null
+          currency_code: string | null
+          current_balance: number | null
+          id: string | null
+          is_active: boolean | null
+          is_system: boolean | null
+          name: string | null
+          normal_balance: string | null
+          organization_id: string | null
+          total_credits: number | null
+          total_debits: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nexus_product_metric_latest: {
         Row: {
           metric_key: string | null
@@ -2850,6 +3169,17 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      nexus_finance_create_entry: {
+        Args: {
+          p_currency_code: string
+          p_description: string
+          p_entry_date: string
+          p_lines: Json
+          p_organization_id: string
+          p_reference: string
+        }
+        Returns: Json
       }
       nexus_ingest_product_metric: {
         Args: {
