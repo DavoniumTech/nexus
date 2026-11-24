@@ -282,7 +282,7 @@ async function main(){
   await loginPage.locator('#nav [data-page="finance"]').click();
   await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Finance control");
   await loginPage.locator('[data-finance-tab="analytics"]').click();
-  await loginPage.waitForTimeout(900);
+  await loginPage.waitForSelector(".os-finance-chart-card .os-chart-line", { timeout: 10000 });
   const financeDiagnostic = await loginPage.evaluate(() => ({
     heading: document.querySelector("#pageCrumb")?.textContent,
     title: document.querySelector("#pageContent .page-head h1")?.textContent,
