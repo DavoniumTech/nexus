@@ -1500,7 +1500,7 @@ html.black-theme body{background:var(--bg);color:var(--text)}
 .ai-prompt-grid button{background:#181421;border-color:rgba(182,156,255,.14);color:#d6cde8}
 .ai-prompt-grid button:hover{background:#241d35;border-color:rgba(182,156,255,.38)}
 .ai-composer{
-  width:min(100% - 48px,980px);
+  width:min(980px,calc(100% - 48px));
   margin:0 auto 14px;
   padding:12px 14px;
   border:1px solid rgba(182,156,255,.2);
