@@ -110,7 +110,7 @@
 
   const state = {
     sb:null, session:null, user:null, profile:{}, workspace:{}, role:"member", currentPage:"overview", cache:{},
-    permissions:[], permissionMap:{}, booting:false, passwordRecovery:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")||"violet",
+    permissions:[], permissionMap:{}, booting:false, passwordRecovery:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")==="ocean"?"violet":(localStorage.getItem("nexus_accent_theme")||"violet"),
     chatId:null, chatMode:"general", chatBusy:false, realtimeChannel:null, realtimeRefreshTimer:null, realtimeAIRefreshTimer:null, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
   };
 
@@ -171,10 +171,11 @@
       $("passwordRecoveryPanel").classList.add("hidden");
       $("authForm").classList.remove("hidden");
       $(".auth-links").classList.remove("hidden");
-      authMessage("Password updated. Opening your Nexus workspace…",false);
-      if(!state.user){const current=await state.sb.auth.getSession();if(current.error)throw current.error;state.session=current.data.session;state.user=current.data.session?.user||null;}
-      await boot();
-      if(!state.user)authMessage("Your password was updated. Sign in with the new password.",false);
+      await clearLocalAuthSession();
+      state.passwordRecovery=false;
+      $("authTitle").textContent="Welcome back.";
+      $("authDescription").textContent="Sign in with your Davonium Technologies account.";
+      showAuth("Your password has been updated successfully. Sign in using your new password.",false);
     }catch(error){authMessage(friendlyAuthError(error),true);}
     finally{button.disabled=false;button.textContent="Update password";}
   }
