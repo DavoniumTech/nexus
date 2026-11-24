@@ -1104,6 +1104,7 @@
         if(act==="privacy-reject"){savePrivacyConsent(false);notify("Optional analytics disabled.","success");return;}
         if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
         if(act==="privacy-customize"){openPrivacySettings();return;}
+        if(act==="ai-send"){void sendAIMessage();return;}
         if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
         if(act==="expand-sidebar"){setSidebarCollapsed(false);return;}
         if(act==="ai-manage-conversation"){manageAIConversation(action.dataset.id);return;}
