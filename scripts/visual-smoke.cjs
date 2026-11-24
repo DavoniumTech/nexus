@@ -288,19 +288,24 @@ async function main(){
   assert.equal(new Set(await loginPage.locator(".accent-theme-grid [data-accent-theme]").evaluateAll(nodes => nodes.map(node => node.dataset.accentTheme))).size, 10,
     "Every accent theme must have a distinct selectable palette");
   await loginPage.locator('.accent-theme-grid [data-accent-theme="rose"]').click();
+  await loginPage.waitForFunction(() => document.documentElement.dataset.accentTheme === "rose");
   assert.equal(await loginPage.evaluate(() => document.documentElement.dataset.accentTheme), "rose",
     "Accent theme selection must apply independently of appearance");
   await loginPage.locator('.accent-theme-grid [data-accent-theme="ocean"]').click();
   await loginPage.locator('[data-act="theme-black"]').click();
+  await loginPage.waitForFunction(() => document.documentElement.classList.contains("black-theme"));
   assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("black-theme")),
     "Dark Mode must apply a separate black theme");
   await loginPage.locator('[data-act="theme-light"]').click();
+  await loginPage.waitForFunction(() => document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme"));
   assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme")),
     "Light theme must be distinct from Dark Mode");
   await loginPage.locator('[data-act="theme-system"]').click();
+  await loginPage.waitForFunction(() => localStorage.getItem("nexus_theme") === "system");
   assert.equal(await loginPage.evaluate(() => localStorage.getItem("nexus_theme")), "system",
     "System appearance preference must persist");
   await loginPage.locator('[data-act="theme-dark"]').click();
+  await loginPage.waitForFunction(() => !document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme"));
   assert.ok(await loginPage.evaluate(() => !document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme")),
     "Dark appearance must remain distinct from Light and Dark Mode");
 
