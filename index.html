@@ -51,7 +51,7 @@
   <div id="app" class="app hidden">
     <div class="mobile-scrim" id="mobileScrim"></div>
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand"><div class="brand-mark small brand-mark-image"><img src="./assets/branding/davonium-d-icon.webp" alt="" width="35" height="35"></div><div class="brand-word"><strong>DAVONIUM</strong><small><img class="nexus-product-mark" src="./assets/branding/davonium-nexus.svg" alt=""> NEXUS OS</small></div><button class="icon-button sidebar-collapse" id="collapseNav" aria-label="Toggle sidebar">‹</button></div>
+      <div class="sidebar-brand"><div class="brand-mark small brand-mark-image"><img src="./assets/branding/davonium-d-icon.webp" alt="" width="35" height="35"></div><div class="brand-word"><strong>DAVONIUM</strong><small><img class="nexus-product-mark" src="./assets/branding/davonium-nexus.svg" alt=""> NEXUS OS</small></div><button class="icon-button sidebar-collapse" id="collapseNav" data-act="toggle-sidebar" aria-label="Toggle sidebar">‹</button></div>
       <button class="workspace-switch" id="workspaceSwitch"><span class="workspace-monogram">DT</span><span class="workspace-meta"><b id="workspaceName">Davonium Technologies</b><small>Company organisation</small></span><span class="chevron">⌄</span></button>
       <div class="sidebar-scroll">
         <nav class="nav-groups" id="nav">
@@ -89,7 +89,7 @@
 
     <main class="main-shell">
       <header class="topbar">
-        <div class="topbar-left"><button class="icon-button desktop-expand-nav hidden" id="expandNav" aria-label="Expand sidebar" title="Expand navigation">›</button><button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button><div class="breadcrumbs"><span>Davonium Technologies</span><b>/</b><strong id="pageCrumb">Nexus Overview</strong></div></div>
+        <div class="topbar-left"><button class="icon-button desktop-expand-nav hidden" id="expandNav" data-act="expand-sidebar" aria-label="Expand sidebar" title="Expand navigation">›</button><button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button><div class="breadcrumbs"><span>Davonium Technologies</span><b>/</b><strong id="pageCrumb">Nexus Overview</strong></div></div>
         <div class="topbar-actions"><button class="global-search" id="openCommand"><span class="search-glyph" data-icon="search"></span><span>Search Nexus…</span><kbd>Ctrl K</kbd></button><button class="icon-button" id="themeToggle" title="Appearance: system. Select next theme." aria-label="Appearance: system. Select next theme.">◐</button><button class="icon-button notification-trigger" id="topNotifications" aria-label="Open inbox" title="Notifications"><span class="notification-bell" data-icon="bell"></span><i id="topNotificationDot"></i></button><span class="top-divider"></span><button class="top-avatar" id="profileButton" aria-label="Account profile">D</button></div>
       </header>
       <div class="main-content" id="pageContent" aria-live="polite"><div class="loading-shell"><div class="skeleton skeleton-title"></div><div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton skeleton-panel"></div></div></div>
