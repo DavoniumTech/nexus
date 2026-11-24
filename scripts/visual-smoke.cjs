@@ -513,6 +513,7 @@ async function main(){
     "The normal sign-in form must retain password-manager compatibility");
 
   // A successful sign-in after recovery must reach the authenticated Nexus overview.
+  await loginPage.evaluate(() => { window.__nexusAuthMock.invalidCredentials = false; });
   await loginPage.locator("#authPassword").fill("new-password-123");
   await loginPage.locator("#authSubmit").click();
   await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible", timeout: 15000 });
