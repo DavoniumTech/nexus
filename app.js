@@ -1094,6 +1094,8 @@
       if(action){
         event.preventDefault();event.stopPropagation();
         const act=action.dataset.act;
+        if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
+        if(act==="expand-sidebar"){setSidebarCollapsed(false);return;}
         if(act==="ai-manage-conversation"){manageAIConversation(action.dataset.id);return;}
         if(act==="ai-toggle-history"){
           const history=$(".ai-history");
