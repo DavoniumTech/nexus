@@ -42,7 +42,7 @@ const MAX_OUTPUT_TOKENS = 8_192;
 const MAX_INPUT_TOKENS = 30_000;
 const MAX_RESPONSE_CHARS = 40_000;
 const GEMINI_TIMEOUT_MS = 60_000;
-const GEMINI_RETRIES = 1;
+const GEMINI_RETRIES = 2;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const INTERNAL_ROLES = new Set([
@@ -911,7 +911,18 @@ async function callGemini(
       const retryable = [429, 500, 502, 503, 504].includes(result.status);
 
       if (retryable && attempt < GEMINI_RETRIES) {
-        await delay(600 * Math.pow(2, attempt));
+        const retryAfterHeader = Number(result.headers.get("retry-after") || 0);
+        const retryDelay = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+          ? Math.min(5000, Math.max(700, retryAfterHeader * 1000))
+          : Math.min(2800, 800 * Math.pow(2, attempt));
+        console.warn(`[${SERVICE_NAME}] Gemini temporary provider response; retrying`, JSON.stringify({
+          model: MODEL,
+          status: result.status,
+          provider_code: providerCode,
+          attempt: attempt + 1,
+          retry_delay_ms: retryDelay
+        }));
+        await delay(retryDelay);
         continue;
       }
 
@@ -1743,13 +1754,33 @@ export default {
         }
 
         if (error instanceof GeminiProviderError) {
+          const temporary = [429, 500, 502, 503, 504].includes(error.status);
+          const safeProviderCode = clean(error.providerCode, 80) || "UNKNOWN_PROVIDER_ERROR";
+          console.error(`[${SERVICE_NAME}] Gemini request failed after bounded retries`, JSON.stringify({
+            model: MODEL,
+            provider_status: error.status,
+            provider_code: safeProviderCode,
+            temporary
+          }));
+          const userMessage = error.status === 429
+            ? "Google Gemini is currently rate-limiting this AI request. Nexus retried automatically; please wait briefly and try again."
+            : error.status === 503
+              ? "Google Gemini is temporarily busy. Nexus retried automatically, but the provider did not recover in time. Please retry shortly."
+              : error.status === 500 || error.status === 502 || error.status === 504
+                ? "Google Gemini did not complete this request after automatic retries. Please try again shortly."
+                : error.status === 400
+                  ? "Google Gemini rejected this request. Shorten the message or ask a simpler question."
+                  : error.status === 401 || error.status === 403
+                    ? "Google Gemini did not authorise this request. The Nexus administrator should check the provider key, model access and Google AI project status."
+                    : "Google Gemini could not process this request. The Nexus administrator should review the provider configuration.";
           return reply({
             success: false,
             code: "GEMINI_PROVIDER_ERROR",
             provider_status: error.status,
-            provider_code: error.providerCode,
-            error: "The configured AI provider could not complete this Nexus request. No unverified answer was returned."
-          }, error.status === 429 ? 429 : 502);
+            provider_code: safeProviderCode,
+            retryable: temporary,
+            error: userMessage
+          }, error.status === 429 ? 429 : error.status === 504 ? 504 : 502);
         }
 
         const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
