@@ -230,7 +230,10 @@ async function main(){
   }
 
   // Analytics line chart is rendered from consented fixture events.
-  await loginPage.locator('#nav [data-page="analytics"]').click();
+  const analyticsNav=loginPage.locator('#nav [data-page="analytics"]');
+  assert.ok(await analyticsNav.isVisible(), "Company Analytics navigation must be visible to the signed-in owner");
+  await analyticsNav.click();
+  await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Company analytics");
   await loginPage.waitForTimeout(1200);
   const analyticsDiagnostic = await loginPage.evaluate(() => ({
     heading: document.querySelector("#pageCrumb")?.textContent,
