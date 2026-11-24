@@ -1605,7 +1605,22 @@ export default {
           }
         }
 
-        // The reservation RPC checks the live server-key guard and applies
+        // Synchronise only the one-way credential hash from the Edge Function's
+        // server environment. The service-role client is used solely for this
+        // private credential record; company data remains on the RLS-scoped db client.
+        const ledgerSyncResult = await ctx.supabaseAdmin.rpc("nexus_ai_sync_server_key", {
+          p_server_key: ledgerKey
+        });
+        if (ledgerSyncResult.error) {
+          console.error("[NEXUS] AI ledger credential synchronisation failed:", ledgerSyncResult.error.code || "SYNC_FAILED");
+          return reply({
+            success: false,
+            code: "AI_LEDGER_SYNC_FAILED",
+            error: "The secure usage ledger could not synchronise its server credential."
+          }, 503);
+        }
+
+        // Reservation now verifies the synchronised server-key hash and applies
         // organization-level daily, burst, output-token and monthly-cost limits.
         const reqId = makeRequestId();
         const startedAt = Date.now();
