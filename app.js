@@ -789,6 +789,12 @@
       if(counter)counter.textContent=`0 / ${fmtNum(state.cache.intelligence?.policy?.max_message_chars||10000)} characters · ${generalMode?"General AI assistant":"Read-only company data"}`;
       if(host)host.innerHTML=messages.length?messages.map(m=>`<article class="ai-message ${m.role==="user"?"user":"assistant"}"><div class="ai-message-head"><b>${m.role==="user"?"You":"DVNM Intelligence"}</b><span>${fmtTime(m.created_at)}</span></div><div class="ai-message-content">${renderMarkdownSafe(m.content)}</div>${m.source_tools?.length?`<div class="ai-source-tags">Sources: ${m.source_tools.map(esc).join(" · ")}</div>`:""}</article>`).join(""):`<div class="chat-welcome"><div class="ai-orb">✦</div><h3>${esc(c.title||"New conversation")}</h3><p>${state.chatMode==="general"?"Ask DVNM Intelligence to explain, write, plan, calculate, code or help you learn. This conversation does not read private company records.":"Ask a question about authorised Davonium company data. Answers are grounded in Nexus records your role can access."}</p></div>`;
       if(host)host.scrollTop=host.scrollHeight;
+      const heading=$("#aiConversationHeading");
+      if(heading)heading.textContent=c.title||"New conversation";
+      const modeEyebrow=$(".ai-chat-head .os-eyebrow");
+      if(modeEyebrow)modeEyebrow.textContent=generalMode?"GENERAL ASSISTANT":"COMPANY INTELLIGENCE";
+      $(".ai-history")?.classList.remove("open");
+      $("#aiHistoryBackdrop")?.classList.remove("visible");
     }catch(e){if(host)host.innerHTML=`<div class="notice error">${esc(e.message)}</div>`;}
   }
   async function createAIConversation(mode=state.chatMode||"general"){try{state.chatMode=mode==="company"?"company":"general";const d=unwrap(await api("intelligence","conversation.create",{title:"New conversation",assistant_mode:state.chatMode}));const id=d.conversation?.id;if(!id)throw new Error("A conversation ID was not returned.");state.chatId=id;await renderIntelligence();}catch(e){notify(e.message,"error");}}
