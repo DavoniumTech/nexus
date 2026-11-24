@@ -67,7 +67,10 @@ async function main(){
     };
     let activeSession = session;
     const authMock = {
-      sessionError: null, invalidCredentials: false, signOutScopes: [], signInCalls: [],
+      sessionError: sessionStorage.getItem("nexus_smoke_stale_session") === "1"
+        ? { code: "refresh_token_not_found", message: "Invalid Refresh Token: Refresh Token Not Found" }
+        : null,
+      invalidCredentials: false, signOutScopes: [], signInCalls: [],
       resetRedirects: [], updatedPasswords: [], authCallback: null
     };
     window.__nexusAuthMock = authMock;
@@ -96,6 +99,7 @@ async function main(){
               authMock.signOutScopes.push(options.scope || "global");
               activeSession = null;
               authMock.sessionError = null;
+              sessionStorage.removeItem("nexus_smoke_stale_session");
               return { error: null };
             },
             resetPasswordForEmail: async function (email, options) {
@@ -448,11 +452,8 @@ async function main(){
 
   // Exercise stale-session recovery, useful credential errors, password reset and local-only logout.
   await loginPage.evaluate(() => {
-    window.__nexusAuthMock.sessionError = {
-      code: "refresh_token_not_found",
-      message: "Invalid Refresh Token: Refresh Token Not Found"
-    };
-    window.__nexusAuthMock.invalidCredentials = true;
+    sessionStorage.setItem("nexus_smoke_stale_session", "1");
+    localStorage.setItem("sb-cmkroryimxskgqlaiiym-auth-token", "stale-test-session");
   });
   await loginPage.reload();
   await loginPage.waitForSelector("#authScreen", { state: "visible" });
@@ -469,6 +470,7 @@ async function main(){
   assert.equal(staleSessionDiagnostic.persistedSession, null,
     "Stale browser authentication storage must be removed");
 
+  await loginPage.evaluate(() => { window.__nexusAuthMock.invalidCredentials = true; });
   await loginPage.locator("#authEmail").fill("nexus-smoke@example.test");
   await loginPage.locator("#authPassword").fill("wrong-password");
   await loginPage.locator("#authSubmit").click();
