@@ -199,12 +199,25 @@ async function main(){
   await loginPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
   await loginPage.locator("#authEmail").fill("nexus-smoke@example.test");
   await loginPage.locator("#authPassword").fill("test-only-password");
+  const authRequests = [];
+  loginPage.on("request", request => {
+    if (/supabase-js|functions\/v1|auth\//.test(request.url())) authRequests.push(request.url());
+  });
   await loginPage.locator("#authSubmit").click();
-  await loginPage.waitForFunction(() =>
-    document.querySelector("#app") &&
-    !document.querySelector("#app").classList.contains("hidden") &&
-    document.querySelector("#authScreen") &&
-    document.querySelector("#authScreen").classList.contains("hidden")
+  await loginPage.waitForTimeout(1500);
+  const bootDiagnostic = await loginPage.evaluate(() => ({
+    appClass: document.querySelector("#app")?.className,
+    authClass: document.querySelector("#authScreen")?.className,
+    authMessage: document.querySelector("#authMessage")?.textContent,
+    connection: document.querySelector("#connectionText")?.textContent,
+    title: document.querySelector("#pageCrumb")?.textContent,
+    body: document.body.innerText.slice(0, 900)
+  }));
+  console.log("NEXUS_BOOT_DIAGNOSTIC", JSON.stringify({ ...bootDiagnostic, errors, authRequests }));
+  assert.ok(
+    document.querySelector("#app") && !document.querySelector("#app").classList.contains("hidden") &&
+    document.querySelector("#authScreen")?.classList.contains("hidden"),
+    "The isolated sign-in fixture must finish the authenticated Nexus boot"
   );
   await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
   assert.ok((await loginPage.locator("#workspaceName").textContent()).includes("Davonium Technologies"),
