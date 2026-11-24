@@ -1070,6 +1070,13 @@
     document.addEventListener("click",event=>{
       const target=event.target instanceof Element?event.target:event.target?.parentElement;
       if(!target)return;
+      const financeTab=target.closest("[data-finance-tab]");
+      if(financeTab&&$("#pageContent")?.contains(financeTab)){
+        event.preventDefault();event.stopPropagation();
+        state.financeTab=financeTab.dataset.financeTab;
+        void renderFinance();
+        return;
+      }
       const page=target.closest("[data-page]");
       if(page){
         event.preventDefault();event.stopPropagation();
@@ -1121,12 +1128,6 @@
         applyAccentTheme();
         if(state.currentPage==="settings")void renderSettings();
         return;
-      }
-      const tab=target.closest("[data-finance-tab]");
-      if(tab&&$("#pageContent")?.contains(tab)){
-        event.preventDefault();event.stopPropagation();
-        state.financeTab=tab.dataset.financeTab;
-        void renderFinance();
       }
     },true);
 
