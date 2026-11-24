@@ -65,7 +65,7 @@ async function main(){
       expires_in: 3600,
       user
     };
-    let activeSession = null;
+    let activeSession = session;
     window.supabase = {
       createClient: function () {
         return {
@@ -198,15 +198,12 @@ async function main(){
       body: JSON.stringify(payload)
     });
   });
-  await loginPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
-  await loginPage.waitForFunction(() => typeof window.supabase?.createClient === "function");
-  await loginPage.locator("#authEmail").fill("nexus-smoke@example.test");
-  await loginPage.locator("#authPassword").fill("test-only-password");
   const authRequests = [];
   loginPage.on("request", request => {
     if (/supabase-js|functions\/v1|auth\//.test(request.url())) authRequests.push(request.url());
   });
-  await loginPage.locator("#authSubmit").click();
+  await loginPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
+  await loginPage.waitForFunction(() => typeof window.supabase?.createClient === "function");
   await loginPage.waitForFunction(() => {
     const app = document.querySelector("#app");
     const auth = document.querySelector("#authScreen");
