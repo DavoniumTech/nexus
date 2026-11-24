@@ -1195,8 +1195,11 @@
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
-    $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
+    $("authForm").addEventListener("submit",authSubmit);
+    $("authSubmit").addEventListener("click",event=>{event.preventDefault();$("authForm").requestSubmit();});
+    $("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("passwordRecoveryForm").addEventListener("submit",submitPasswordRecovery);
+    $("passwordRecoverySubmit").addEventListener("click",event=>{event.preventDefault();$("passwordRecoveryForm").requestSubmit();});
     $("cancelPasswordRecovery").onclick=async()=>{state.passwordRecovery=false;await clearLocalAuthSession();$("passwordRecoveryPanel").classList.add("hidden");$("authForm").classList.remove("hidden");$(".auth-links").classList.remove("hidden");$("authTitle").textContent="Welcome back.";$("authDescription").textContent="Sign in with your Davonium Technologies account.";showAuth("Password reset was cancelled. You can sign in below.");};
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
