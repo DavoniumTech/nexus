@@ -396,6 +396,17 @@
       const y=top+step*plotHeight/3;
       return `<line class="os-chart-gridline" x1="${left}" y1="${y.toFixed(2)}" x2="${width-right}" y2="${y.toFixed(2)}"/>`;
     }).join("");
+    const plotWidth=width-left-right,groupWidth=plotWidth/labels.length;
+    const zeroY=yAt(0);
+    const bars=validSeries.map((item,index)=>{
+      const barWidth=Math.min(12,Math.max(3,groupWidth*.46/validSeries.length));
+      return item.values.map((value,i)=>{
+        const valueY=yAt(value),barHeight=Math.max(2,Math.abs(zeroY-valueY));
+        const x=xAt(i)-barWidth*validSeries.length/2+barWidth*index+(barWidth*.5);
+        const y=Math.min(zeroY,valueY);
+        return `<rect class="os-chart-bar os-chart-series-${index}" x="${(x-barWidth/2).toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="1.5"><title>${esc(item.name)} · ${esc(labels[i])}: ${esc(fmtNum(value))}</title></rect>`;
+      }).join("");
+    }).join("");
     const plots=validSeries.map((item,index)=>{
       const points=item.values.map((value,i)=>[xAt(i),yAt(value)]);
       const path=points.map((point,i)=>(i?"L":"M")+point[0].toFixed(2)+" "+point[1].toFixed(2)).join(" ");
@@ -1054,129 +1065,67 @@
     });
   }
   function wire(){
-    // One early, resilient router handles every generated dashboard control.
-    // The sidebar has its own navigation handler, but all in-page buttons,
-    // cards, AI actions, finance tabs and mobile shortcuts depend on this.
+    // One capture-phase router owns every generated navigation and action control.
+    // It handles nested SVG targets and prevents duplicate delegated handlers.
     document.addEventListener("click",event=>{
       const target=event.target instanceof Element?event.target:event.target?.parentElement;
       if(!target)return;
-
       const page=target.closest("[data-page]");
       if(page){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         void navigate(page.dataset.page);
         return;
       }
-
       const mobileMore=target.closest('[data-act="mobile-more"]');
       if(mobileMore){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         $("#sidebar")?.classList.add("open");
         $("#mobileScrim")?.classList.add("show");
         return;
       }
-
       const modalAct=target.closest("[data-modal-act]");
       if(modalAct){
-        event.preventDefault();
-        const action=modalAct.dataset.modalAct;
-        const id=modalAct.dataset.id;
-        const projectId=modalAct.dataset.project;
-        closeModal();
-        void dispatchAction(action,id,{projectId});
+        event.preventDefault();event.stopPropagation();
+        const action=modalAct.dataset.modalAct,id=modalAct.dataset.id,projectId=modalAct.dataset.project;
+        void closeModal().then(()=>dispatchAction(action,id,{projectId}));
         return;
       }
-
       const action=target.closest("[data-act]");
       if(action){
-        event.preventDefault();
-        if(action.dataset.act==="ai-manage-conversation"){
-          manageAIConversation(action.dataset.id);
-          return;
-        }
-        if(action.dataset.act==="ai-toggle-history"){
+        event.preventDefault();event.stopPropagation();
+        const act=action.dataset.act;
+        if(act==="ai-manage-conversation"){manageAIConversation(action.dataset.id);return;}
+        if(act==="ai-toggle-history"){
           const history=$(".ai-history");
           history?.classList.toggle("open");
           $("#aiHistoryBackdrop")?.classList.toggle("visible",history?.classList.contains("open")===true);
           return;
         }
-        if(action.dataset.act==="ai-close-history"){
+        if(act==="ai-close-history"){
           $(".ai-history")?.classList.remove("open");
           $("#aiHistoryBackdrop")?.classList.remove("visible");
           return;
         }
-        dispatchAction(action.dataset.act,action.dataset.id,{projectId:action.dataset.project});
+        dispatchAction(act,action.dataset.id,{projectId:action.dataset.project,status:action.dataset.status});
         return;
       }
-
       const accent=target.closest("[data-accent-theme]");
       if(accent){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         state.accentTheme=accent.dataset.accentTheme;
         applyAccentTheme();
         if(state.currentPage==="settings")void renderSettings();
         return;
       }
-
       const tab=target.closest("[data-finance-tab]");
       if(tab&&$("#pageContent")?.contains(tab)){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         state.financeTab=tab.dataset.financeTab;
         void renderFinance();
       }
-    });
+    },true);
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
-    const bindPageNavigation=root=>root?.addEventListener("click",event=>{
-      const item=event.target.closest("[data-page]");
-      if(!item||!root.contains(item))return;
-      event.preventDefault();
-      event.stopPropagation();
-      void navigate(item.dataset.page);
-    });
-    bindPageNavigation($("#nav"));
-    bindPageNavigation($("#mobileAppNav"));
-    $("#mobileAppNav").addEventListener("click",event=>{
-      const more=event.target.closest('[data-act="mobile-more"]');
-      if(!more)return;
-      event.preventDefault();
-      event.stopPropagation();
-      $("#sidebar").classList.add("open");
-      $("#mobileScrim").classList.add("show");
-    });
-    $("#pageContent").addEventListener("click",event=>{
-      const conversationMenu=event.target.closest('[data-act="ai-manage-conversation"]');
-      if(conversationMenu&&$("#pageContent").contains(conversationMenu)){
-        event.preventDefault();event.stopPropagation();
-        manageAIConversation(conversationMenu.dataset.id);
-        return;
-      }
-      const accent=event.target.closest("[data-accent-theme]");
-      if(accent&&$("#pageContent").contains(accent)){
-        event.preventDefault();event.stopPropagation();
-        state.accentTheme=accent.dataset.accentTheme;
-        applyAccentTheme();
-        void renderSettings();
-        return;
-      }
-      const theme=event.target.closest('[data-act^="theme-"]');
-      if(theme&&$("#pageContent").contains(theme)){
-        event.preventDefault();event.stopPropagation();
-        const requested=theme.dataset.act.replace("theme-","");
-        if(["dark","black","light","system"].includes(requested)){
-          state.theme=requested;
-          applyTheme();
-          void renderSettings();
-        }
-        return;
-      }
-      const tab=event.target.closest("[data-finance-tab]");
-      if(!tab||!$("#pageContent").contains(tab))return;
-      event.preventDefault();
-      event.stopPropagation();
-      state.financeTab=tab.dataset.financeTab;
-      void renderFinance();
-    });
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
