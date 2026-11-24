@@ -350,6 +350,10 @@ async function main(){
   await loginPage.waitForSelector("#aiModeSelect");
   assert.ok(await loginPage.locator(".ai-return-home").isVisible(),
     "Desktop and tablet DVNM Intelligence must provide a visible route back to Nexus");
+  await loginPage.locator(".ai-return-home").click();
+  await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
+  await loginPage.locator('#nav [data-page="intelligence"]').click();
+  await loginPage.waitForSelector("#aiModeSelect");
   await loginPage.locator("#aiModeSelect").selectOption("company");
   await loginPage.waitForSelector('[data-ai-conversation]');
   await loginPage.locator("#aiMessageInput").fill("hello");
