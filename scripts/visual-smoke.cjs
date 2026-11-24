@@ -478,8 +478,14 @@ async function main(){
   const invalidLoginDiagnostic = await loginPage.evaluate(() => ({
     message: document.querySelector("#authMessage")?.textContent,
     buttonDisabled: document.querySelector("#authSubmit")?.disabled,
+    buttonType: document.querySelector("#authSubmit")?.type,
+    formValid: document.querySelector("#authForm")?.checkValidity(),
+    formConnected: document.querySelector("#authForm")?.isConnected,
+    emailValue: document.querySelector("#authEmail")?.value,
+    passwordLength: document.querySelector("#authPassword")?.value?.length,
     mockRejectFlag: window.__nexusAuthMock.invalidCredentials,
     signInCallCount: window.__nexusAuthMock.signInCalls.length,
+    pageErrors: [...document.querySelectorAll("#authMessage")].map(el => ({text: el.textContent, className: el.className})),
     browserBody: document.body.innerText.slice(0, 1200)
   }));
   console.log("NEXUS_INVALID_LOGIN_DIAGNOSTIC", JSON.stringify(invalidLoginDiagnostic));
