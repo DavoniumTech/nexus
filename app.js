@@ -1082,7 +1082,8 @@
         const action=modalAct.dataset.modalAct;
         const id=modalAct.dataset.id;
         const projectId=modalAct.dataset.project;
-        void closeModal().then(()=>dispatchAction(action,id,{projectId}));
+        closeModal();
+        void dispatchAction(action,id,{projectId});
         return;
       }
 
