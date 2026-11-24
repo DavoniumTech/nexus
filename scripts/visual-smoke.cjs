@@ -511,6 +511,18 @@ async function main(){
     "The recovery panel must close after a successful password update");
   assert.equal(await loginPage.locator("#authPassword").getAttribute("autocomplete"), "current-password",
     "The normal sign-in form must retain password-manager compatibility");
+
+  // A successful sign-in after recovery must reach the authenticated Nexus overview.
+  await loginPage.locator("#authPassword").fill("new-password-123");
+  await loginPage.locator("#authSubmit").click();
+  await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible", timeout: 15000 });
+  assert.ok(await loginPage.locator("#app").isVisible(),
+    "A successful password sign-in must enter the Nexus application");
+  await loginPage.locator("#signOut").click();
+  await loginPage.waitForSelector("#authScreen", { state: "visible" });
+  const signOutScopes = await loginPage.evaluate(() => window.__nexusAuthMock.signOutScopes);
+  assert.ok(signOutScopes.length >= 2 && signOutScopes.every(scope => scope === "local"),
+    "Password recovery and normal sign-out must only end the current browser session");
   assert.deepEqual(errors,[],"Browser page errors must be empty");
   await loginContext.close();
 
