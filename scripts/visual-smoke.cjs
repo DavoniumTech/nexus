@@ -249,10 +249,19 @@ async function main(){
 
   // Finance analytics uses posted-ledger fixture data, never production sample records.
   await loginPage.locator('#nav [data-page="finance"]').click();
+  await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Finance control");
   await loginPage.locator('[data-finance-tab="analytics"]').click();
-  await loginPage.waitForSelector(".os-finance-chart-card .os-thin-chart svg");
-  assert.ok(await loginPage.locator(".os-finance-chart-card .os-chart-line").count() >= 2,
-    "Finance analytics must render separate revenue and expense trend lines");
+  await loginPage.waitForTimeout(900);
+  const financeDiagnostic = await loginPage.evaluate(() => ({
+    heading: document.querySelector("#pageCrumb")?.textContent,
+    title: document.querySelector("#pageContent .page-head h1")?.textContent,
+    text: document.querySelector("#pageContent")?.innerText?.slice(0, 1800),
+    chartCount: document.querySelectorAll(".os-finance-chart-card .os-thin-chart svg").length,
+    pageError: document.querySelector("#pageContent .notice.error")?.textContent || ""
+  }));
+  console.log("NEXUS_FINANCE_SMOKE_DIAGNOSTIC", JSON.stringify({ ...financeDiagnostic, requestedActions: mockAnalyticsActions, browserErrors: errors }));
+  assert.ok(financeDiagnostic.chartCount >= 1 && await loginPage.locator(".os-finance-chart-card .os-chart-line").count() >= 2,
+    "Finance analytics must render separate revenue and expense trend lines from posted ledger fixture data");
   await loginPage.locator('[data-finance-tab="overview"]').click();
   assert.ok(await loginPage.locator(".metric-symbol svg").count() >= 4,
     "Finance KPI cards must render vector icons rather than icon-name text");
