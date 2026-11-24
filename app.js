@@ -167,12 +167,12 @@
     if(state.currentPage==="settings")renderSettings();
   }
   function setSidebarCollapsed(collapsed,persist=true){
-    state.isCollapsed=!!collapsed;
+    const mobile=window.matchMedia?.("(max-width: 760px)")?.matches===true;
+    state.isCollapsed=mobile?false:!!collapsed;
     $("app")?.classList.toggle("sidebar-collapsed",state.isCollapsed);
     const expand=$("expandNav");
-    const mobile=window.matchMedia?.("(max-width: 760px)")?.matches===true;
     if(expand)expand.classList.toggle("hidden",!state.isCollapsed||mobile);
-    if(persist){try{localStorage.setItem("nexus_sidebar_collapsed",state.isCollapsed?"true":"false");}catch(_){}}
+    if(persist&&!mobile){try{localStorage.setItem("nexus_sidebar_collapsed",state.isCollapsed?"true":"false");}catch(_){}}
   }
   function normalizeError(payload,status){ const msg=payload?.message||payload?.error||payload?.code||`Request failed (${status})`;const error=new Error(String(msg));error.status=status;error.payload=payload;return error; }
   async function edge(functionKey,body={},options={}){
@@ -988,7 +988,29 @@
   }
 
   // EVENT WIRING
-  function applyRoleNavigation(){const external=["client","investor"].includes(state.role);if(external&&!document.querySelector('#nav [data-page="portal"]')){const b=document.createElement("button");b.className="nav-item";b.dataset.page="portal";b.innerHTML='<span class="nav-icon">◈</span><span>My portal</span>';$("nav").appendChild(b);}document.querySelectorAll("#nav [data-page]").forEach(el=>{const p=el.dataset.page;el.hidden=external?!["portal","notifications","settings"].includes(p):p==="portal";if(p==="analytics"&&!state.permissionMap["analytics.view"])el.hidden=true;if(p==="finance"&&!state.permissionMap["finance.view"])el.hidden=true;});}
+  function applyRoleNavigation(){
+    const external=["client","investor"].includes(state.role);
+    if(external&&!document.querySelector('#nav [data-page="portal"]')){
+      const b=document.createElement("button");b.className="nav-item";b.dataset.page="portal";
+      b.innerHTML='<span class="nav-icon">◈</span><span>My portal</span>';$("#nav").appendChild(b);
+    }
+    document.querySelectorAll("#nav [data-page]").forEach(el=>{
+      const p=el.dataset.page;
+      el.hidden=external?!["portal","notifications","settings"].includes(p):p==="portal";
+      if(p==="analytics"&&!state.permissionMap["analytics.view"])el.hidden=true;
+      if(p==="finance"&&!state.permissionMap["finance.view"])el.hidden=true;
+    });
+    const home=document.querySelector('.mobile-nav-item[data-page="overview"]');
+    if(home){
+      home.dataset.page=external?"portal":"overview";
+      const label=home.querySelector("small");if(label)label.textContent=external?"Portal":"Home";
+    }
+    document.querySelectorAll(".mobile-nav-item[data-page]").forEach(el=>{
+      const p=el.dataset.page;
+      el.hidden=external?!["portal","notifications"].includes(p):
+        (p==="intelligence"&&!state.permissionMap["intelligence.use"]);
+    });
+  }
   function wire(){
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
