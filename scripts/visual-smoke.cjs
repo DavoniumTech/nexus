@@ -283,12 +283,14 @@ async function main(){
   // Test all four appearance modes from the real settings panel.
   await loginPage.locator('#nav [data-page="settings"]').click();
   await loginPage.waitForSelector('[data-act="theme-black"]', { state: "visible" });
-  assert.equal(await loginPage.locator("[data-accent-theme]").count(), 10,
+  assert.equal(await loginPage.locator(".accent-theme-grid [data-accent-theme]").count(), 10,
     "Appearance settings must expose ten separate accent themes");
-  await loginPage.locator('[data-accent-theme="rose"]').click();
+  assert.equal(new Set(await loginPage.locator(".accent-theme-grid [data-accent-theme]").evaluateAll(nodes => nodes.map(node => node.dataset.accentTheme))).size, 10,
+    "Every accent theme must have a distinct selectable palette");
+  await loginPage.locator('.accent-theme-grid [data-accent-theme="rose"]').click();
   assert.equal(await loginPage.evaluate(() => document.documentElement.dataset.accentTheme), "rose",
     "Accent theme selection must apply independently of appearance");
-  await loginPage.locator('[data-accent-theme="ocean"]').click();
+  await loginPage.locator('.accent-theme-grid [data-accent-theme="ocean"]').click();
   await loginPage.locator('[data-act="theme-black"]').click();
   assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("black-theme")),
     "Dark Mode must apply a separate black theme");
