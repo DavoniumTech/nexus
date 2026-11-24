@@ -97,6 +97,7 @@ async function main(){
   const smokeConversationId = "11111111-1111-4111-8111-111111111111";
   const mockConversations = [];
   const mockAnalyticsActions = [];
+  const mockFinanceResponses = [];
   loginPage.on("dialog", dialog => dialog.accept());
   await loginPage.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
     const url = new URL(route.request().url());
@@ -186,6 +187,9 @@ async function main(){
       } else if (body.action === "chat") {
         payload = { success: true, answer: "Hello from DVNM Intelligence.", tools_used: [], data_sources_used: [], usage: { input_tokens: 5, output_tokens: 12, estimated_cost_usd: 0.0001 }, generated_at: new Date().toISOString() };
       }
+    }
+    if (functionName === "nexus-analytics" && body.action === "finance.analytics") {
+      mockFinanceResponses.push({ action: body.action, response: payload });
     }
     await route.fulfill({
       status: 200,
@@ -286,7 +290,7 @@ async function main(){
     chartCount: document.querySelectorAll(".os-finance-chart-card .os-thin-chart svg").length,
     pageError: document.querySelector("#pageContent .notice.error")?.textContent || ""
   }));
-  console.log("NEXUS_FINANCE_SMOKE_DIAGNOSTIC", JSON.stringify({ ...financeDiagnostic, requestedActions: mockAnalyticsActions, browserErrors: errors }));
+  console.log("NEXUS_FINANCE_SMOKE_DIAGNOSTIC", JSON.stringify({ ...financeDiagnostic, requestedActions: mockAnalyticsActions, mockFinanceResponses, browserErrors: errors }));
   assert.ok(financeDiagnostic.chartCount >= 1 && await loginPage.locator(".os-finance-chart-card .os-chart-line").count() >= 2,
     "Finance analytics must render separate revenue and expense trend lines from posted ledger fixture data");
   await loginPage.locator('[data-finance-tab="overview"]').click();
