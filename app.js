@@ -1032,6 +1032,25 @@
       $("#mobileScrim").classList.add("show");
     });
     $("#pageContent").addEventListener("click",event=>{
+      const accent=event.target.closest("[data-accent-theme]");
+      if(accent&&$("#pageContent").contains(accent)){
+        event.preventDefault();event.stopPropagation();
+        state.accentTheme=accent.dataset.accentTheme;
+        applyAccentTheme();
+        void renderSettings();
+        return;
+      }
+      const theme=event.target.closest('[data-act^="theme-"]');
+      if(theme&&$("#pageContent").contains(theme)){
+        event.preventDefault();event.stopPropagation();
+        const requested=theme.dataset.act.replace("theme-","");
+        if(["dark","black","light","system"].includes(requested)){
+          state.theme=requested;
+          applyTheme();
+          void renderSettings();
+        }
+        return;
+      }
       const tab=event.target.closest("[data-finance-tab]");
       if(!tab||!$("#pageContent").contains(tab))return;
       event.preventDefault();
