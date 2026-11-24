@@ -68,6 +68,12 @@
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
     file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>',
     check: '<path d="m5 12 4 4L19 6"/>',
+    wallet: '<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 9h18M15 15h2"/>',
+    "list-tree": '<path d="M9 6h12M9 12h12M9 18h12M3 6h1M5 12h1M3 18h1"/>',
+    "book-open": '<path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H12v18H4.5A2.5 2.5 0 0 0 2 23V5.5ZM22 5.5A2.5 2.5 0 0 0 19.5 3H12v18h7.5A2.5 2.5 0 0 1 22 23V5.5Z"/>',
+    "shield-check": '<path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/>',
+    coins: '<circle cx="8" cy="8" r="5"/><path d="M11 12a5 5 0 1 0 5-5M3 8v2a5 5 0 0 0 10 0V8M16 12h2m-1-1v2"/>',
+    "trending-up": '<path d="m3 17 6-6 4 4 8-9M15 6h6v6"/>',
     x: '<path d="m18 6-12 12M6 6l12 12"/>'
   };
 
@@ -88,9 +94,22 @@
   const slugify = value => String(value||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   const initials = value => String(value||"D").trim().split(/[\s@._-]+/).slice(0,2).map(s=>s[0]||"").join("").toUpperCase() || "D";
   const icon = (name, cls="") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]||ICON.grid}</svg>`;
+  const ACCENT_PALETTES = {
+    ocean:{label:"Ocean",cyan:"#47d9f3",cyan2:"#16b8db",blue:"#5c8fff",violet:"#9c83ff"},
+    azure:{label:"Azure",cyan:"#55b7ff",cyan2:"#288fe8",blue:"#4f79f5",violet:"#8e9aff"},
+    violet:{label:"Violet",cyan:"#a99aff",cyan2:"#9278f1",blue:"#7688f8",violet:"#b29aff"},
+    emerald:{label:"Emerald",cyan:"#48ddb0",cyan2:"#1dbd8c",blue:"#4d9eaa",violet:"#8cc6af"},
+    mint:{label:"Mint",cyan:"#83e6c5",cyan2:"#42c99d",blue:"#6dbca9",violet:"#a7d9bd"},
+    amber:{label:"Amber",cyan:"#f4c46f",cyan2:"#e6a943",blue:"#c98b43",violet:"#e6b68a"},
+    sunset:{label:"Sunset",cyan:"#ffad83",cyan2:"#f27d72",blue:"#e37a8b",violet:"#c18fe3"},
+    rose:{label:"Rose",cyan:"#ff8eb4",cyan2:"#e86d9a",blue:"#bb83c8",violet:"#d49be8"},
+    indigo:{label:"Indigo",cyan:"#9aa8ff",cyan2:"#7587ee",blue:"#6776dc",violet:"#a197ff"},
+    monochrome:{label:"Monochrome",cyan:"#d4dbe4",cyan2:"#aab5c2",blue:"#8492a4",violet:"#b4bec9"}
+  };
+
   const state = {
     sb:null, session:null, user:null, profile:{}, workspace:{}, role:"member", currentPage:"overview", cache:{},
-    permissions:[], permissionMap:{}, booting:false, isCollapsed:false, theme:localStorage.getItem("nexus_theme")||"system",
+    permissions:[], permissionMap:{}, booting:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")||"ocean",
     chatId:null, chatMode:"general", chatBusy:false, realtimeChannel:null, realtimeRefreshTimer:null, realtimeAIRefreshTimer:null, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
   };
 
@@ -108,6 +127,17 @@
   function connection(ok,message){ $("connectionText").textContent=message|| (ok?"Connected securely":"Connection issue"); $("sidebarStatusDot").className="status-dot"+(ok?"": " bad"); }
   function authMessage(message,bad=false){ const el=$("authMessage");el.textContent=message;el.className="notice"+(bad?" error":""); }
   function showAuth(message="",bad=false){ $("authScreen").classList.remove("hidden");$("app").classList.add("hidden");if(message)authMessage(message,bad); }
+  function applyAccentTheme(){
+    if(!ACCENT_PALETTES[state.accentTheme])state.accentTheme="ocean";
+    const palette=ACCENT_PALETTES[state.accentTheme],root=document.documentElement;
+    root.dataset.accentTheme=state.accentTheme;
+    root.style.setProperty("--cyan",palette.cyan);
+    root.style.setProperty("--cyan-2",palette.cyan2);
+    root.style.setProperty("--blue",palette.blue);
+    root.style.setProperty("--violet",palette.violet);
+    root.style.setProperty("--accent-soft",palette.cyan+"18");
+    try{localStorage.setItem("nexus_accent_theme",state.accentTheme);}catch(_){}
+  }
   function applyTheme(){
     const media=window.matchMedia?.("(prefers-color-scheme: dark)");
     const allowedThemes=["dark","black","light","system"];
@@ -124,8 +154,9 @@
     const button=$("themeToggle");
     if(button){
       button.textContent=state.theme==="system"?"◐":resolved==="light"?"☼":resolved==="black"?"●":"☾";
-      button.setAttribute("aria-label","Appearance: "+(resolved==="black"?"Elevated Black":state.theme)+". Select next theme.");
-      button.title="Appearance: "+(resolved==="black"?"Elevated Black":state.theme)+". Select next theme.";
+      const label=resolved==="black"?"Dark Mode":state.theme==="dark"?"Dark":state.theme==="light"?"Light":"System";
+      button.setAttribute("aria-label","Appearance: "+label+". Select appearance.");
+      button.title="Appearance: "+label+". Select appearance.";
     }
   }
   function cycleTheme(){
@@ -134,6 +165,14 @@
     state.theme=themes[(current+1+themes.length)%themes.length];
     applyTheme();
     if(state.currentPage==="settings")renderSettings();
+  }
+  function setSidebarCollapsed(collapsed,persist=true){
+    state.isCollapsed=!!collapsed;
+    $("app")?.classList.toggle("sidebar-collapsed",state.isCollapsed);
+    const expand=$("expandNav");
+    const mobile=window.matchMedia?.("(max-width: 760px)")?.matches===true;
+    if(expand)expand.classList.toggle("hidden",!state.isCollapsed||mobile);
+    if(persist){try{localStorage.setItem("nexus_sidebar_collapsed",state.isCollapsed?"true":"false");}catch(_){}}
   }
   function normalizeError(payload,status){ const msg=payload?.message||payload?.error||payload?.code||`Request failed (${status})`;const error=new Error(String(msg));error.status=status;error.payload=payload;return error; }
   async function edge(functionKey,body={},options={}){
@@ -161,7 +200,7 @@
   function empty(title="No records yet",copy="Records will appear here as Nexus data becomes available."){return `<div class="table-empty"><div class="empty-icon">✦</div><div class="empty-title">${esc(title)}</div><div class="empty-copy">${esc(copy)}</div></div>`;}
   function pageHead(page,actions="",subtitle=null){const meta=PAGE[page]||PAGE.overview;return `<div class="page-head"><div><div class="head-overline">DAVONIUM TECHNOLOGIES / NEXUS</div><h1>${esc(meta[0])}</h1><p>${esc(subtitle||meta[1])}</p></div><div class="head-actions">${actions}</div></div>`;}
   function panel(title,copy,body,action=""){return `<section class="panel"><div class="panel-head"><div><h3>${esc(title)}</h3>${copy?`<p>${esc(copy)}</p>`:""}</div>${action}</div>${body}</section>`;}
-  function stat(label,value,foot,symbol){return `<article class="metric-card"><div class="metric-top"><span>${esc(label)}</span><span class="metric-symbol">${esc(symbol||"✦")}</span></div><div class="metric-value">${esc(value??"—")}</div><div class="metric-foot">${esc(foot||"Live Nexus data")}</div></article>`;}
+  function stat(label,value,foot,symbol){const glyph=Object.prototype.hasOwnProperty.call(ICON,symbol)?icon(symbol):esc(symbol||"✦");return `<article class="metric-card"><div class="metric-top"><span>${esc(label)}</span><span class="metric-symbol">${glyph}</span></div><div class="metric-value">${esc(value??"—")}</div><div class="metric-foot">${esc(foot||"Live Nexus data")}</div></article>`;}
   function property(label,value){return `<div class="property"><small>${esc(label)}</small><b>${esc(value??"—")}</b></div>`;}
   function table(headers,rows,opts={}){if(!rows?.length)return empty(opts.emptyTitle||"Nothing to show yet",opts.emptyCopy||"No records are available for this view.");return `<div class="data-table-wrap"><table class="data-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;}
   function textCell(primary,secondary=""){return `<span class="cell-title">${esc(primary||"Untitled")}</span>${secondary?`<span class="cell-sub">${esc(secondary)}</span>`:""}`;}
@@ -272,7 +311,7 @@
 
   function loadingMarkup(){return `<div class="loading-shell"><div class="skeleton skeleton-title"></div><div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton skeleton-panel"></div></div>`;}
   async function navigate(page){
-    if(!PAGE[page])page="overview";state.currentPage=page;$("app").classList.toggle("ai-mode",page==="intelligence");document.querySelectorAll(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));setPageTitle(page);$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");$("pageContent").innerHTML=loadingMarkup();
+    if(!PAGE[page])page="overview";state.currentPage=page;$("app").classList.toggle("ai-mode",page==="intelligence");document.querySelectorAll(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));document.querySelectorAll(".mobile-nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));setPageTitle(page);$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");$("pageContent").innerHTML=loadingMarkup();
     const views={overview:renderOverview,projects:renderProjects,tasks:renderTasks,clients:renderClients,people:renderPeople,products:renderProducts,analytics:renderAnalytics,finance:renderFinance,strategy:renderStrategy,investors:renderInvestors,documents:renderDocuments,communications:renderCommunications,announcements:renderAnnouncements,notifications:renderNotifications,intelligence:renderIntelligence,monitoring:renderMonitoring,security:renderSecurity,permissions:renderPermissions,settings:renderSettings,portal:renderPortal};
     try{await (views[page]||renderOverview)();void trackEvent("page_view",page);}catch(error){console.error(`${page} render`,error);$("pageContent").innerHTML=pageHead(page,`<button class="btn btn-secondary" data-act="refresh">${icon("refresh")} Retry</button>`)+`<div class="panel"><div class="notice error">${esc(error.message)}</div><p class="muted" style="font-size:10px;margin:12px 0 0">Your authenticated session is still available. The relevant Edge Function or database policy may have rejected this operation.</p></div>`;}}
   async function refresh(){state.cache={};await navigate(state.currentPage);}
@@ -870,13 +909,15 @@
   }
   async function renderSettings(){const c=cfg();const [profileR,sessionR]=await Promise.all([safe(api("workspace","overview")),safe(api("audit","session.assurance"))]);const profile=unwrap(profileR.data)||{},assurance=unwrap(sessionR.data)||{};
     let html=pageHead("settings",`<button class="btn btn-primary" data-act="open-connection">Connection settings</button>`,"Manage this browser connection and review your Davonium Nexus organisation identity.");
-    html+=`<div class="grid metric-grid">${stat("Nexus organisation",state.workspace.name||"Davonium Technologies",state.workspace.slug||WORKSPACE_SLUG,"◈")}${stat("Your role",state.role,"Resolved from active Nexus membership","♙")}${stat("Authentication","Supabase Auth",state.user?.email||"Signed in","✓")}${stat("Theme",state.theme==="black"?"Elevated Black":state.theme==="system"?"System":state.theme==="light"?"Light":"Dark","Saved in this browser","◐")}</div>`;
+    const appearanceName={dark:"Dark",black:"Dark Mode",light:"Light",system:"System"}[state.theme]||"System";
+    const accentButtons=Object.entries(ACCENT_PALETTES).map(([key,p])=>`<button type="button" class="accent-theme-choice ${state.accentTheme===key?"active":""}" data-accent-theme="${key}" aria-pressed="${state.accentTheme===key}"><span class="accent-theme-swatch" style="--swatch:${p.cyan}"></span><b>${p.label}</b></button>`).join("");
+    html+=`<div class="grid metric-grid">${stat("Nexus organisation",state.workspace.name||"Davonium Technologies",state.workspace.slug||WORKSPACE_SLUG,"grid")}${stat("Your role",state.role,"Resolved from active Nexus membership","users")}${stat("Authentication","Supabase Auth",state.user?.email||"Signed in","shield-check")}${stat("Appearance",appearanceName,"Saved in this browser","activity")}</div>`;
     html+=`<div class="content-grid"><div>${panel("Nexus organisation identity","Identity resolved from the existing Nexus session Edge Function.",`<div class="property-grid">${property("Organisation",state.workspace.name||"Davonium Technologies")}${property("Slug",state.workspace.slug||WORKSPACE_SLUG)}${property("Nexus organisation ID",state.workspace.id||"Not returned")}${property("Membership role",state.role)}${property("Membership status",state.workspace.membership_status||state.workspace.status||"active")}${property("Account email",state.user?.email||"—")}</div>`)}${panel("Connection", "This browser calls your existing Supabase project directly using the signed-in user's access token.",`<div class="property-grid">${property("Project URL",c.url)}${property("Project reference",PROJECT_REF)}${property("Key type","Publishable / anon only")}${property("Session",state.session?"Authenticated":"Not authenticated")}</div><div class="toolbar"><button class="btn btn-secondary" data-act="open-connection">Edit connection</button><button class="btn btn-secondary" data-act="connection-check">Verify session</button></div>`)}</div><div>${panel("Security model","The frontend is not trusted with server credentials.",`<div class="capability-list"><div><span>Service-role key in browser</span>${pill("never")}</div><div><span>Gemini API key in browser</span>${pill("never")}</div><div><span>AI ledger key in browser</span>${pill("never")}</div><div><span>Database writes</span>${pill("Edge Function / RLS")}</div><div><span>Private documents</span>${pill("signed access only")}</div></div>`)}${panel("Appearance","Choose a theme or follow this device's appearance.",`<div class="settings-block"><h3>Interface theme</h3><p>Your choice is saved in this browser. System follows the device automatically.</p><div class="button-row theme-choice-row">
-<button class="btn ${state.theme==="dark"?"btn-primary":"btn-secondary"}" data-act="theme-dark">Dark · Navy</button>
-<button class="btn ${state.theme==="black"?"btn-primary":"btn-secondary"}" data-act="theme-black">Elevated Black</button>
+<button class="btn ${state.theme==="dark"?"btn-primary":"btn-secondary"}" data-act="theme-dark">Dark</button>
+<button class="btn ${state.theme==="black"?"btn-primary":"btn-secondary"}" data-act="theme-black">Dark Mode</button>
 <button class="btn ${state.theme==="light"?"btn-primary":"btn-secondary"}" data-act="theme-light">Light</button>
 <button class="btn ${state.theme==="system"?"btn-primary":"btn-secondary"}" data-act="theme-system">System</button>
-</div></div>`)}${panel("Session assurance","Current Supabase MFA assurance.",`<div class="property-grid">${property("Level",assurance.current_level||"Unknown")}${property("MFA verified",assurance.mfa_verified_for_this_session?"Yes":"No")}</div><button class="btn btn-secondary btn-small" data-page="security">Open Security & audit</button>`)}</div></div>`;
+</div></div>`)}${panel("Themes","Choose one of ten accent palettes. This changes accent colours without changing your appearance.",`<div class="accent-theme-grid">${accentButtons}</div><p class="field-note">Your selection is saved on this device.</p>`)}${panel("Session assurance","Current Supabase MFA assurance.",`<div class="property-grid">${property("Level",assurance.current_level||"Unknown")}${property("MFA verified",assurance.mfa_verified_for_this_session?"Yes":"No")}</div><button class="btn btn-secondary btn-small" data-page="security">Open Security & audit</button>`)}</div></div>`;
     $("pageContent").innerHTML=html;
   }
 
@@ -940,6 +981,7 @@
         case "theme-black":state.theme="black";applyTheme();await renderSettings();break;
         case "theme-light":state.theme="light";applyTheme();await renderSettings();break;
         case "theme-system":state.theme="system";applyTheme();await renderSettings();break;
+        case "mobile-more":$("sidebar").classList.add("open");$("mobileScrim").classList.add("show");break;
         default:notify(`This action is not available: ${act}`,"error");
       }
     }catch(e){notify(e.message||"The action could not be completed.","error");}
@@ -948,7 +990,8 @@
   // EVENT WIRING
   function applyRoleNavigation(){const external=["client","investor"].includes(state.role);if(external&&!document.querySelector('#nav [data-page="portal"]')){const b=document.createElement("button");b.className="nav-item";b.dataset.page="portal";b.innerHTML='<span class="nav-icon">◈</span><span>My portal</span>';$("nav").appendChild(b);}document.querySelectorAll("#nav [data-page]").forEach(el=>{const p=el.dataset.page;el.hidden=external?!["portal","notifications","settings"].includes(p):p==="portal";if(p==="analytics"&&!state.permissionMap["analytics.view"])el.hidden=true;if(p==="finance"&&!state.permissionMap["finance.view"])el.hidden=true;});}
   function wire(){
-    document.querySelectorAll(".nav-icon[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
+    applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
+    document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
@@ -961,9 +1004,10 @@
     if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(err=>console.warn("Nexus offline shell",err)));
     $("openCommand").onclick=showCommand;$("topNotifications").onclick=()=>navigate("notifications");$("profileButton").onclick=()=>navigate("settings");$("workspaceSwitch").onclick=()=>navigate("settings");$("connectionDetails").onclick=()=>navigate("settings");
     $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");};
-    $("collapseNav").onclick=()=>{$("app").classList.toggle("sidebar-collapsed");state.isCollapsed=$("app").classList.contains("sidebar-collapsed");};$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
+    $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
     $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
     document.addEventListener("click",e=>{
+      const accent=e.target.closest("[data-accent-theme]");if(accent){state.accentTheme=accent.dataset.accentTheme;applyAccentTheme();if(state.currentPage==="settings")void renderSettings();return;}
       const ft=e.target.closest("[data-finance-tab]");if(ft){state.financeTab=ft.dataset.financeTab;void renderFinance();return;}
       const page=e.target.closest("[data-page]");if(page){e.preventDefault();navigate(page.dataset.page);return;}
       const modalAct=e.target.closest("[data-modal-act]");if(modalAct){const a=modalAct.dataset.modalAct,id=modalAct.dataset.id,projectId=modalAct.dataset.project;closeModal();dispatchAction(a,id,{projectId});return;}
