@@ -224,8 +224,8 @@ async function main(){
   console.log("NEXUS_BOOT_DIAGNOSTIC", JSON.stringify({ ...bootDiagnostic, errors, authRequests }));
   assert.ok(
     bootDiagnostic.hasSupabase &&
-    !String(bootDiagnostic.appClass || "").split(/\\s+/).includes("hidden") &&
-    String(bootDiagnostic.authClass || "").split(/\\s+/).includes("hidden"),
+    !String(bootDiagnostic.appClass || "").split(/\s+/).includes("hidden") &&
+    String(bootDiagnostic.authClass || "").split(/\s+/).includes("hidden"),
     "The isolated sign-in fixture must finish the authenticated Nexus boot"
   );
   await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
