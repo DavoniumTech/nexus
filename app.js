@@ -1023,6 +1023,14 @@
     });
     bindPageNavigation($("#nav"));
     bindPageNavigation($("#mobileAppNav"));
+    $("#pageContent").addEventListener("click",event=>{
+      const tab=event.target.closest("[data-finance-tab]");
+      if(!tab||!$("#pageContent").contains(tab))return;
+      event.preventDefault();
+      event.stopPropagation();
+      state.financeTab=tab.dataset.financeTab;
+      void renderFinance();
+    });
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
