@@ -472,9 +472,18 @@ async function main(){
 
   await loginPage.evaluate(() => { window.__nexusAuthMock.invalidCredentials = true; });
   await loginPage.locator("#authEmail").fill("nexus-smoke@example.test");
-  await loginPage.locator("#authPassword").fill("wrong-password");
+  await loginPage.locator("#authPassword").fill("not-the-test-credential");
   await loginPage.locator("#authSubmit").click();
-  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("email or password is incorrect"));
+  await loginPage.waitForTimeout(250);
+  const invalidLoginDiagnostic = await loginPage.evaluate(() => ({
+    message: document.querySelector("#authMessage")?.textContent,
+    buttonDisabled: document.querySelector("#authSubmit")?.disabled,
+    mockRejectFlag: window.__nexusAuthMock.invalidCredentials,
+    signInCallCount: window.__nexusAuthMock.signInCalls.length,
+    browserBody: document.body.innerText.slice(0, 1200)
+  }));
+  console.log("NEXUS_INVALID_LOGIN_DIAGNOSTIC", JSON.stringify(invalidLoginDiagnostic));
+  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.toLowerCase().includes("email or password is incorrect"));
   assert.ok(await loginPage.locator("#authForm").isVisible(),
     "Incorrect credentials must leave a usable sign-in form");
 
