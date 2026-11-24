@@ -66,27 +66,58 @@ async function main(){
       user
     };
     let activeSession = session;
+    const authMock = {
+      sessionError: null, invalidCredentials: false, signOutScopes: [], signInCalls: [],
+      resetRedirects: [], updatedPasswords: [], authCallback: null
+    };
+    window.__nexusAuthMock = authMock;
     window.supabase = {
-      createClient: function () {
+      createClient: function (url, key, options) {
+        authMock.url = url; authMock.storageKey = options?.auth?.storageKey;
         return {
           auth: {
-            onAuthStateChange: function () {
+            onAuthStateChange: function (callback) {
+              authMock.authCallback = callback;
               return { data: { subscription: { unsubscribe: function () {} } } };
             },
             getSession: async function () {
-              return { data: { session: activeSession }, error: null };
+              return authMock.sessionError
+                ? { data: { session: null }, error: authMock.sessionError }
+                : { data: { session: activeSession }, error: null };
             },
-            signInWithPassword: async function () {
+            signInWithPassword: async function (credentials) {
+              authMock.signInCalls.push({ email: credentials.email });
+              if (authMock.invalidCredentials) return { data: { session: null, user: null }, error: { code: "invalid_credentials", message: "Invalid login credentials" } };
               activeSession = session;
+              authMock.sessionError = null;
               return { data: { session, user }, error: null };
             },
-            signOut: async function () {
+            signOut: async function (options = {}) {
+              authMock.signOutScopes.push(options.scope || "global");
               activeSession = null;
+              authMock.sessionError = null;
               return { error: null };
+            },
+            resetPasswordForEmail: async function (email, options) {
+              authMock.resetRedirects.push({ email, redirectTo: options?.redirectTo });
+              return { data: {}, error: null };
+            },
+            updateUser: async function (attributes) {
+              authMock.updatedPasswords.push(attributes.password);
+              activeSession = null;
+              return { data: { user }, error: null };
             }
-          }
+          },
+          channel: function () {
+            return { on: function () { return this; }, subscribe: function () { return this; } };
+          },
+          removeChannel: async function () { return "ok"; }
         };
       }
+    };
+    authMock.emit = function (event, nextSession) {
+      if (event === "SIGNED_OUT") activeSession = null;
+      authMock.authCallback?.(event, nextSession || null);
     };
   });
   await loginPage.route(/supabase-js@2/, route => route.fulfill({
@@ -414,11 +445,76 @@ async function main(){
   await loginPage.locator("#submitDynamicForm").click();
   await loginPage.waitForFunction(() => document.querySelectorAll("[data-ai-conversation]").length === 0);
   assert.equal(mockConversations.length, 0, "Deleting a conversation must remove it from the list");
+
+  // Exercise stale-session recovery, useful credential errors, password reset and local-only logout.
+  await loginPage.evaluate(() => {
+    window.__nexusAuthMock.sessionError = {
+      code: "refresh_token_not_found",
+      message: "Invalid Refresh Token: Refresh Token Not Found"
+    };
+    window.__nexusAuthMock.invalidCredentials = true;
+  });
+  await loginPage.reload();
+  await loginPage.waitForSelector("#authScreen", { state: "visible" });
+  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("saved browser session expired"));
+  const staleSessionDiagnostic = await loginPage.evaluate(() => ({
+    storageKey: window.__nexusAuthMock.storageKey,
+    scopes: [...window.__nexusAuthMock.signOutScopes],
+    persistedSession: localStorage.getItem("sb-cmkroryimxskgqlaiiym-auth-token")
+  }));
+  assert.equal(staleSessionDiagnostic.storageKey, "sb-cmkroryimxskgqlaiiym-auth-token",
+    "Nexus must use its own explicit Supabase browser storage key");
+  assert.ok(staleSessionDiagnostic.scopes.includes("local"),
+    "A stale refresh token must be cleared with local-only sign-out");
+  assert.equal(staleSessionDiagnostic.persistedSession, null,
+    "Stale browser authentication storage must be removed");
+
+  await loginPage.locator("#authEmail").fill("nexus-smoke@example.test");
+  await loginPage.locator("#authPassword").fill("wrong-password");
+  await loginPage.locator("#authSubmit").click();
+  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("email or password is incorrect"));
+  assert.ok(await loginPage.locator("#authForm").isVisible(),
+    "Incorrect credentials must leave a usable sign-in form");
+
+  await loginPage.locator("#forgotPassword").click();
+  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("password reset instructions have been sent"));
+  const resetRedirect = await loginPage.evaluate(() => window.__nexusAuthMock.resetRedirects[0]?.redirectTo);
+  assert.ok(resetRedirect?.startsWith("http://127.0.0.1:4173/"),
+    "Password reset must return to the exact deployed Nexus origin and path");
+
+  await loginPage.evaluate(() => window.__nexusAuthMock.emit("PASSWORD_RECOVERY", {
+    access_token: "nexus-smoke-recovery-token",
+    refresh_token: "nexus-smoke-recovery-refresh",
+    user: { id: "nexus-smoke-user", email: "nexus-smoke@example.test" }
+  }));
+  await loginPage.waitForSelector("#passwordRecoveryPanel", { state: "visible" });
+  await loginPage.locator("#newAuthPassword").fill("new-password-123");
+  await loginPage.locator("#confirmAuthPassword").fill("different-password");
+  await loginPage.locator("#passwordRecoverySubmit").click();
+  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("passwords do not match"));
+  await loginPage.locator("#confirmAuthPassword").fill("new-password-123");
+  await loginPage.locator("#passwordRecoverySubmit").click();
+  await loginPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("password has been updated successfully"));
+  const recoveryDiagnostic = await loginPage.evaluate(() => ({
+    updatedPasswords: [...window.__nexusAuthMock.updatedPasswords],
+    scopes: [...window.__nexusAuthMock.signOutScopes]
+  }));
+  assert.deepEqual(recoveryDiagnostic.updatedPasswords, ["new-password-123"],
+    "Only a matching, valid new password must be sent to Supabase");
+  assert.ok(recoveryDiagnostic.scopes.every(scope => scope === "local"),
+    "Recovering or signing out must never invalidate sessions on other devices");
+  assert.ok(await loginPage.locator("#authForm").isVisible(),
+    "After reset, Nexus must return to the ordinary sign-in form");
+  assert.ok(await loginPage.locator("#passwordRecoveryPanel").isHidden(),
+    "The recovery panel must close after a successful password update");
+  assert.equal(await loginPage.locator("#authPassword").getAttribute("autocomplete"), "current-password",
+    "The normal sign-in form must retain password-manager compatibility");
+  assert.deepEqual(errors,[],"Browser page errors must be empty");
   await loginContext.close();
 
 
   assert.deepEqual(errors,[],"Browser page errors must be empty");
-  console.log("Nexus desktop and mobile UI, sidebar recovery, ten accents, four appearances, analytics, finance charts and DVNM chat lifecycle smoke tests passed.");
+  console.log("Nexus desktop/mobile, charts, DVNM chat, stale-session recovery, credential feedback, password reset and local-only logout tests passed.");
  }finally{await browser.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
