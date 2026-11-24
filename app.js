@@ -1023,6 +1023,14 @@
     });
     bindPageNavigation($("#nav"));
     bindPageNavigation($("#mobileAppNav"));
+    $("#mobileAppNav").addEventListener("click",event=>{
+      const more=event.target.closest('[data-act="mobile-more"]');
+      if(!more)return;
+      event.preventDefault();
+      event.stopPropagation();
+      $("#sidebar").classList.add("open");
+      $("#mobileScrim").classList.add("show");
+    });
     $("#pageContent").addEventListener("click",event=>{
       const tab=event.target.closest("[data-finance-tab]");
       if(!tab||!$("#pageContent").contains(tab))return;
