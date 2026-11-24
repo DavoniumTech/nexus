@@ -33,15 +33,26 @@
       </div>
       <section class="auth-card">
         <div class="auth-card-top"><span class="eyebrow">PRIVATE NEXUS ACCESS</span><span class="secure-mark">◈ SECURE ACCESS</span></div>
-        <h2>Welcome back.</h2>
-        <p class="muted">Sign in with your Davonium Technologies account.</p>
+        <h2 id="authTitle">Welcome back.</h2>
+        <p class="muted" id="authDescription">Sign in with your Davonium Technologies account.</p>
         <form id="authForm" class="form-stack">
           <label class="field">Email address<input id="authEmail" type="email" autocomplete="username" required placeholder="you@davoniumtech.com"></label>
           <label class="field">Password<input id="authPassword" type="password" autocomplete="current-password" required placeholder="Your password"><span class="field-note">Use the password linked to your invited account.</span></label>
           <button class="btn btn-primary btn-full" id="authSubmit" type="submit">Sign in to Nexus <span>↗</span></button>
         </form>
-        <div class="auth-links"><button class="link-button" id="forgotPassword">Forgot password?</button><button class="link-button" id="openSetupAuth">Connection settings</button></div>
-        <div id="authMessage" class="notice hidden" role="status"></div>
+        <section id="passwordRecoveryPanel" class="password-recovery-panel hidden" aria-labelledby="passwordRecoveryHeading">
+          <div class="recovery-icon"><span>✦</span></div>
+          <h3 id="passwordRecoveryHeading">Choose a new password</h3>
+          <p>Use at least eight characters. Your new password will replace the old one for this Nexus account.</p>
+          <form id="passwordRecoveryForm" class="form-stack">
+            <label class="field">New password<input id="newAuthPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters"></label>
+            <label class="field">Confirm new password<input id="confirmAuthPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Enter it again"></label>
+            <button class="btn btn-primary btn-full" id="passwordRecoverySubmit" type="submit">Update password <span>↗</span></button>
+            <button class="link-button recovery-cancel" id="cancelPasswordRecovery" type="button">Cancel and return to sign in</button>
+          </form>
+        </section>
+        <div class="auth-links"><button class="link-button" id="forgotPassword" type="button">Forgot password?</button><button class="link-button" id="openSetupAuth" type="button">Connection settings</button></div>
+        <div id="authMessage" class="notice hidden" role="status" aria-live="polite"></div>
         <div class="auth-foot"><span class="status-dot"></span> Protected by Supabase Authentication and database access policies.</div>
       </section>
     </div>
