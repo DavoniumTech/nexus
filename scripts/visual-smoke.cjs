@@ -231,15 +231,16 @@ async function main(){
 
   // Analytics line chart is rendered from consented fixture events.
   await loginPage.locator('#nav [data-page="analytics"]').click();
-  await loginPage.waitForSelector(".os-analytics-grid", { state: "visible" });
-  await loginPage.waitForTimeout(250);
+  await loginPage.waitForTimeout(1200);
   const analyticsDiagnostic = await loginPage.evaluate(() => ({
     heading: document.querySelector("#pageCrumb")?.textContent,
+    title: document.querySelector("#pageContent .page-head h1")?.textContent,
     text: document.querySelector("#pageContent")?.innerText?.slice(0, 1800),
     chartCount: document.querySelectorAll(".os-thin-chart svg").length,
+    gridCount: document.querySelectorAll(".os-analytics-grid").length,
     pageError: document.querySelector("#pageContent .notice.error")?.textContent || ""
   }));
-  console.log("NEXUS_ANALYTICS_SMOKE_DIAGNOSTIC", JSON.stringify({ ...analyticsDiagnostic, requestedActions: mockAnalyticsActions }));
+  console.log("NEXUS_ANALYTICS_SMOKE_DIAGNOSTIC", JSON.stringify({ ...analyticsDiagnostic, requestedActions: mockAnalyticsActions, browserErrors: errors }));
   assert.ok(analyticsDiagnostic.chartCount >= 1,
     "Company analytics must render thin SVG trend lines from its consented analytics response");
 
