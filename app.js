@@ -422,7 +422,7 @@
     const legend=validSeries.map((item,index)=>`<span><i class="os-chart-legend-dot os-chart-series-${index}"></i>${esc(item.name)}</span>`).join("");
     return `<div class="os-thin-chart">
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Line chart showing ${esc(validSeries.map(x=>x.name).join(" and "))}">
-        ${grid}${plots}
+        ${grid}${bars}${plots}
       </svg>
       <div class="os-chart-ticks">${ticks}</div>
       <div class="os-chart-legend">${legend}</div>
