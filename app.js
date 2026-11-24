@@ -1032,6 +1032,12 @@
       $("#mobileScrim").classList.add("show");
     });
     $("#pageContent").addEventListener("click",event=>{
+      const conversationMenu=event.target.closest('[data-act="ai-manage-conversation"]');
+      if(conversationMenu&&$("#pageContent").contains(conversationMenu)){
+        event.preventDefault();event.stopPropagation();
+        manageAIConversation(conversationMenu.dataset.id);
+        return;
+      }
       const accent=event.target.closest("[data-accent-theme]");
       if(accent&&$("#pageContent").contains(accent)){
         event.preventDefault();event.stopPropagation();
