@@ -98,7 +98,7 @@
   const ACCENT_PALETTES = {
     ocean:{label:"Ocean",cyan:"#47d9f3",cyan2:"#16b8db",blue:"#5c8fff",violet:"#9c83ff"},
     azure:{label:"Azure",cyan:"#55b7ff",cyan2:"#288fe8",blue:"#4f79f5",violet:"#8e9aff"},
-    violet:{label:"Violet",cyan:"#a99aff",cyan2:"#9278f1",blue:"#7688f8",violet:"#b29aff"},
+    violet:{label:"Violet",cyan:"#a68bff",cyan2:"#8767eb",blue:"#7385e8",violet:"#b69cff"},
     emerald:{label:"Emerald",cyan:"#48ddb0",cyan2:"#1dbd8c",blue:"#4d9eaa",violet:"#8cc6af"},
     mint:{label:"Mint",cyan:"#83e6c5",cyan2:"#42c99d",blue:"#6dbca9",violet:"#a7d9bd"},
     amber:{label:"Amber",cyan:"#f4c46f",cyan2:"#e6a943",blue:"#c98b43",violet:"#e6b68a"},
@@ -110,7 +110,7 @@
 
   const state = {
     sb:null, session:null, user:null, profile:{}, workspace:{}, role:"member", currentPage:"overview", cache:{},
-    permissions:[], permissionMap:{}, booting:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")||"ocean",
+    permissions:[], permissionMap:{}, booting:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")||"violet",
     chatId:null, chatMode:"general", chatBusy:false, realtimeChannel:null, realtimeRefreshTimer:null, realtimeAIRefreshTimer:null, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
   };
 
@@ -129,7 +129,7 @@
   function authMessage(message,bad=false){ const el=$("authMessage");el.textContent=message;el.className="notice"+(bad?" error":""); }
   function showAuth(message="",bad=false){ $("authScreen").classList.remove("hidden");$("app").classList.add("hidden");if(message)authMessage(message,bad); }
   function applyAccentTheme(){
-    if(!ACCENT_PALETTES[state.accentTheme])state.accentTheme="ocean";
+    if(!ACCENT_PALETTES[state.accentTheme])state.accentTheme="violet";
     const palette=ACCENT_PALETTES[state.accentTheme],root=document.documentElement;
     root.dataset.accentTheme=state.accentTheme;
     root.style.setProperty("--cyan",palette.cyan);
@@ -336,14 +336,45 @@
     (finance.accounts||[]).filter(x=>x.account_type==="asset").forEach(x=>assets[x.currency_code]=(assets[x.currency_code]||0)+Number(x.current_balance||0));
     const assetValue=Object.keys(assets).map(k=>new Intl.NumberFormat(undefined,{style:"currency",currency:k,maximumFractionDigits:0}).format(assets[k])).join(" · ")||"No balances";
     const greeting=new Date().getHours()<12?"Good morning":new Date().getHours()<18?"Good afternoon":"Good evening";
+    const completed=tasks.filter(x=>/done|complete|closed/i.test(x.status||"")).length;
+    const ratio=(numerator,denominator)=>denominator>0?Math.max(0,Math.min(100,Math.round(numerator/denominator*100))):null;
+    const ring=(value)=>value==null?0:value;
+    const kpis=[
+      ["projects","Active projects",active,projects.length+" total",ratio(active,projects.length),"layers","violet"],
+      ["tasks","Tasks completed",completed,tasks.length+" recent records",ratio(completed,tasks.length),"check-square","blue"],
+      ["tasks","Overdue work",due,open+" open tasks",ratio(due,open),"calendar","amber"],
+      ["monitoring","Service health",healthy,services.length+" monitored",ratio(healthy,services.length),"shield-check","green"]
+    ];
+    const kpiHtml=kpis.map(item=>`<button class="os-kpi os-kpi-ring" data-page="${item[0]}">
+      <span class="os-kpi-copy"><small>${esc(item[1])}</small><strong>${fmtNum(item[2])}</strong><em>${esc(item[3])}</em></span>
+      <span class="os-ring os-ring-${item[6]}" style="--ring-value:${ring(item[4])}%" role="img" aria-label="${item[4]==null?"No records":item[4]+" percent"}">
+        <span>${item[4]==null?"—":item[4]+"%"}</span>
+      </span>
+    </button>`).join("");
     const cards=[["projects","Projects",projects.length,"Delivery portfolio","layers"],["tasks","Open tasks",open,due+" overdue","check-square"],["clients","Clients",clients.length,"Customer relationships","briefcase"],["people","People & teams",members.length,"Company directory","users"],["products","Products",products.length,"Product portfolio","box"],["analytics","Analytics",an.ok?String(analytics.events_30d??0):"Restricted","Consented events · 30 days","activity"],["finance","Finance",fi.ok?assetValue:"Restricted","Posted asset balances","wallet"],["monitoring","System health",services.length,healthy+" healthy records","shield-check"]];
     const cardHtml=cards.map(x=>`<button class="os-module-card" data-page="${x[0]}"><span class="os-module-icon">${icon(x[4])}</span><span class="os-module-copy"><b>${esc(x[1])}</b><small>${esc(x[3])}</small></span><strong>${esc(x[2])}</strong><span class="os-module-arrow">↗</span></button>`).join("");
+    const chartDays=Array.from({length:30},(_,offset)=>{const day=new Date();day.setDate(day.getDate()-(29-offset));return day.toISOString().slice(0,10);});
+    const chartLabels=chartDays.map(day=>day.slice(5));
+    const countRecent=rows=>{const bins=new Map();for(const row of rows){const value=row.created_at||row.created_on||row.inserted_at;if(!value)continue;const key=String(value).slice(0,10);if(chartDays.includes(key))bins.set(key,(bins.get(key)||0)+1);}return chartDays.map(day=>bins.get(day)||0);};
+    const pulseSeries=[];
+    if(an.ok&&Array.isArray(analytics.daily))pulseSeries.push({name:"Consented activity",values:chartDays.map(day=>Number(analytics.daily.find(row=>String(row.day).slice(0,10)===day)?.events||0))});
+    if(projects.some(row=>row.created_at||row.created_on))pulseSeries.push({name:"Projects added",values:countRecent(projects)});
+    if(tasks.some(row=>row.created_at||row.created_on||row.inserted_at))pulseSeries.push({name:"Tasks added",values:countRecent(tasks)});
+    const pulse=pulseSeries.length?renderThinLineChart(pulseSeries,chartLabels,"There are no consented or dated operating events in this period."):`<div class="os-chart-empty"><span class="os-ring os-ring-violet" style="--ring-value:0%"><span>—</span></span><b>Operating pulse is waiting for data</b><small>Enable optional analytics or create dated project and task records to populate this chart.</small></div>`;
     const rows=projects.slice(0,6).map(x=>`<tr class="os-click-row" data-act="open-project" data-id="${esc(x.id)}"><td><b>${esc(x.name||"Untitled project")}</b></td><td>${pill(x.status||"unknown")}</td><td>${x.progress_percent==null?"—":esc(fmtNum(x.progress_percent)+"%")}</td><td>${fmtDate(x.target_date)}</td></tr>`).join("");
     const feed=(no.ok?records(no.data,"notifications"):[]).map(x=>`<div class="os-feed-row"><i class="os-feed-dot"></i><div><b>${esc(x.title||"Nexus update")}</b><small>${esc(x.body||x.notification_type||"")}</small></div><time>${fmtTime(x.created_at)}</time></div>`).join("");
     const projectButton=state.permissionMap["projects.create"]?'<button class="btn btn-primary" data-act="create-project">＋ New project</button>':"";
     let html=`<section class="os-command-centre"><header class="os-welcome-row"><div><div class="os-eyebrow">DAVONIUM NEXUS / COMMAND CENTRE</div><h1>${greeting}, ${esc(state.profile.display_name?.split(" ")[0]||"there")}.</h1><p>One operating picture for delivery, people, products, finance and intelligence.</p></div><div class="os-welcome-actions">${projectButton}<button class="btn btn-secondary" data-act="create-task">＋ New task</button><button class="btn btn-secondary" data-page="intelligence">✦ Ask DVNM</button><button class="icon-button" data-act="refresh">↻</button></div></header>
-    <div class="os-kpi-grid"><button class="os-kpi" data-page="projects"><span>Active projects</span><strong>${fmtNum(active)}</strong><small>${fmtNum(projects.length)} total</small></button><button class="os-kpi" data-page="tasks"><span>Open work</span><strong>${fmtNum(open)}</strong><small>${fmtNum(due)} overdue</small></button><button class="os-kpi" data-page="people"><span>People</span><strong>${fmtNum(members.length)}</strong><small>Directory records</small></button><button class="os-kpi" data-page="monitoring"><span>Healthy services</span><strong>${services.length?Math.round(healthy/services.length*100)+"%":"—"}</strong><small>${healthy} of ${services.length} services</small></button></div>
+    <div class="os-kpi-grid os-kpi-ring-grid">${kpiHtml}</div>
     <div class="os-section-head"><div><span class="os-eyebrow">OPERATING MODULES</span><h2>Navigate your company</h2></div><span class="os-live-indicator"><i></i> Permission-scoped services</span></div><section class="os-module-grid">${cardHtml}</section>
+    <section class="os-overview-pulse">
+      <section class="os-surface os-overview-chart"><header><div><span class="os-eyebrow">OPERATING PULSE</span><h2>Company activity · last 30 days</h2><p>Different colours represent separately counted, available Nexus records.</p></div><span class="os-live-indicator"><i></i> Live records</span></header>${pulse}<footer class="os-chart-footnote">Optional usage metrics appear only when analytics access and consent are available. Project and task lines use dated records returned by Nexus.</footer></section>
+      <section class="os-surface os-overview-insights"><header><div><span class="os-eyebrow">AT A GLANCE</span><h2>Quick actions</h2></div></header>
+        <button class="os-insight-link" data-page="analytics"><span class="os-insight-icon os-insight-violet">${icon("activity")}</span><span><b>Company analytics</b><small>${an.ok?fmtNum(analytics.events_30d??0)+" consented events":"Permission-controlled insights"}</small></span>${icon("chevron")}</button>
+        <button class="os-insight-link" data-page="finance"><span class="os-insight-icon os-insight-blue">${icon("wallet")}</span><span><b>Finance control</b><small>${fi.ok?"Posted balances · "+esc(assetValue):"Finance access follows your role"}</small></span>${icon("chevron")}</button>
+        <button class="os-insight-link" data-page="intelligence"><span class="os-insight-icon os-insight-amber">${icon("sparkles")}</span><span><b>DVNM Intelligence</b><small>Ask, analyse and plan</small></span>${icon("chevron")}</button>
+      </section>
+    </section>
     <div class="os-lower-grid"><section class="os-surface"><header><div><span class="os-eyebrow">DELIVERY CONTROL</span><h2>Project portfolio</h2></div><button class="btn btn-quiet" data-page="projects">Open projects ↗</button></header>${table(["Project","Status","Progress","Target"],rows,{emptyTitle:"No accessible projects",emptyCopy:"Projects assigned to your role will appear here."})}</section><section class="os-surface"><header><div><span class="os-eyebrow">LIVE SIGNALS</span><h2>Company activity</h2></div><button class="btn btn-quiet" data-page="notifications">Inbox ↗</button></header><div class="os-feed">${feed||empty("No new activity","Operational events and notifications will appear here.")}</div></section></div>
     <footer class="os-bottom-strip"><span><i></i> ${esc(state.workspace.name||"Davonium Technologies")}</span><span>${esc(state.role)} access</span><span>Updated ${fmtTime(new Date().toISOString())}</span><button data-page="monitoring">System health ↗</button></footer></section>`;
     $("#pageContent").innerHTML=html;
@@ -706,8 +737,8 @@
     const welcome=`<div class="ai-welcome-state"><div class="ai-welcome-mark">✦</div><h2>${state.chatMode==="general"?"What can I help you work through?":"Ask about Davonium."}</h2><p>${state.chatMode==="general"?"Learning, planning, writing, analysis and code. General mode does not access private company records.":"Answers use company records available to your signed-in role. The assistant is read-only."}</p><div class="ai-prompt-grid">${prompts.map(p=>`<button type="button" data-ai-prompt="${esc(p[0])}">${esc(p[1])}<span>↗</span></button>`).join("")}</div></div>`;
     const warning=!enabled?`<div class="ai-service-notice"><span class="ai-service-icon">!</span><div><b>DVNM service is not yet enabled</b><p>${providerReady?"Provider and ledger credentials are present. Owner approval of provider privacy and billing disclosures is still required.":"A provider or ledger credential is missing. Configure it in Supabase Edge Function secrets; never paste it into this page."}</p></div>${canManage?`<button class="btn btn-secondary btn-small" data-act="ai-policy-enable">Review and enable</button>`:""}</div>`:"";
     const modeSelect=`<select id="aiModeSelect" class="ai-mode-select" aria-label="DVNM Intelligence mode"><option value="general" ${state.chatMode==="general"?"selected":""}>General Assistant</option><option value="company" ${state.chatMode==="company"?"selected":""}>Company Intelligence</option></select>`;
-    let html=`<section class="ai-os"><header class="ai-os-top"><div class="ai-os-brand"><button class="icon-button" data-page="overview" title="Back to Nexus">‹</button><img class="ai-brand-logo" src="./assets/branding/davonium-d-icon.webp" alt="Davonium Technologies" width="36" height="36"><div><b>DVNM Intelligence</b><small>DAVONIUM NEXUS AI</small></div></div><div class="ai-os-top-actions">${modeSelect}<button class="btn btn-secondary" data-act="ai-new">＋ New chat</button>${canManage?`<button class="icon-button" data-act="ai-manage-limits" title="AI capacity controls">⚙</button>`:""}</div></header>
-    <div class="ai-os-body"><aside class="ai-history"><div class="ai-history-title"><span>RECENT CONVERSATIONS</span><button class="icon-button tiny" data-act="ai-new">＋</button></div><div class="ai-history-list">${threads||`<div class="ai-history-empty">Your private conversations will appear here.</div>`}</div><div class="ai-history-foot"><span class="ai-status-dot ${enabled?"ready":"waiting"}"></span><span>${enabled?"AI service available":"AI service awaiting setup"}</span></div></aside>
+    let html=`<section class="ai-os"><header class="ai-os-top"><div class="ai-os-brand"><button class="icon-button ai-history-toggle" data-act="ai-toggle-history" title="Recent conversations" aria-label="Open conversations">${icon("list-tree")}</button><button class="icon-button ai-return-home" data-page="overview" title="Back to Nexus" aria-label="Back to Nexus">‹</button><img class="ai-brand-logo" src="./assets/branding/davonium-d-icon.webp" alt="Davonium Technologies" width="36" height="36"><div><b>DVNM Intelligence</b><small>DAVONIUM NEXUS AI</small></div></div><div class="ai-os-top-actions">${modeSelect}<button class="btn btn-secondary" data-act="ai-new">＋ New chat</button>${canManage?`<button class="icon-button" data-act="ai-manage-limits" title="AI capacity controls">⚙</button>`:""}</div></header>
+    <div class="ai-history-backdrop" id="aiHistoryBackdrop" data-act="ai-close-history"></div><div class="ai-os-body"><aside class="ai-history"><div class="ai-history-title"><span>RECENT CONVERSATIONS</span><button class="icon-button tiny" data-act="ai-new">＋</button></div><div class="ai-history-list">${threads||`<div class="ai-history-empty">Your private conversations will appear here.</div>`}</div><div class="ai-history-foot"><span class="ai-status-dot ${enabled?"ready":"waiting"}"></span><span>${enabled?"AI service available":"AI service awaiting setup"}</span></div></aside>
     <main class="ai-chat-stage"><header class="ai-chat-head"><div><div class="os-eyebrow">${state.chatMode==="general"?"GENERAL ASSISTANT":"COMPANY INTELLIGENCE"}</div><h1 id="aiConversationHeading">${esc(selected?.title||mode)}</h1><p>${state.chatMode==="general"?"Everyday intelligence · no company data access":"Role-authorised Nexus records · read-only"}</p></div><div class="ai-head-tools"><span class="ai-mode-pill">${mode}</span><span class="ai-status ${enabled?"on":"off"}"><i></i>${enabled?"Available":"Paused"}</span></div></header>${warning}
     <div class="ai-messages" id="aiMessages">${state.chatId?loadingMarkup():welcome}</div>
     <form id="aiComposer" class="ai-composer"><div class="ai-composer-top"><span class="ai-composer-context">${state.chatMode==="general"?"General assistant":"Secure company context"}</span><span id="aiCharCount">0 / ${fmtNum(maxChars)}</span></div><textarea id="aiMessageInput" rows="1" maxlength="${maxChars}" placeholder="${state.chatMode==="general"?"Message DVNM Intelligence…":"Ask about authorised company records…"}" ${enabled?"":"disabled"}></textarea><div class="ai-composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button class="btn btn-primary" id="aiSend" type="submit" ${enabled?"":"disabled"}>Send <span>↗</span></button></div></form>
@@ -743,12 +774,16 @@
   }
 
   async function loadAIConversation(id){
-    state.chatId=id;document.querySelectorAll("[data-ai-conversation]").forEach(button=>button.classList.toggle("active",button.dataset.aiConversation===id));const host=$("aiMessages");if(host)host.innerHTML=loadingMarkup();
+    state.chatId=id;
+    $(".ai-history")?.classList.remove("open");
+    $("#aiHistoryBackdrop")?.classList.remove("visible");
+    document.querySelectorAll("[data-ai-conversation]").forEach(button=>button.classList.toggle("active",button.dataset.aiConversation===id));const host=$("aiMessages");if(host)host.innerHTML=loadingMarkup();
     try{const d=unwrap(await api("intelligence","conversation.get",{conversation_id:id}));const c=d.conversation||{},messages=d.messages||[];state.chatId=id;state.chatMode=c.assistant_mode||"company";
       const generalMode=state.chatMode==="general";
       if($("aiModeSelect"))$("aiModeSelect").value=state.chatMode;
-      const title=$(".ai-workspace-head h2"),description=$(".ai-workspace-head p"),composer=$("aiMessageInput"),counter=$("aiCharCount");
-      if(title)title.textContent=generalMode?"Your AI workspace.":"Company intelligence.";
+      const title=$("#aiConversationHeading"),description=$(".ai-chat-head p"),composer=$("aiMessageInput"),counter=$("aiCharCount");
+      if(title)title.textContent=c.title||"New conversation";
+      $(".ai-chat-head .os-eyebrow")?.replaceChildren(document.createTextNode(generalMode?"GENERAL ASSISTANT":"COMPANY INTELLIGENCE"));
       if(description)description.textContent=generalMode?"Ask anything: learn, write, plan, calculate or code. This conversation does not access private company records.":"Ask a question about the Nexus records available to your role.";
       if(composer){composer.placeholder=generalMode?"Message DVNM Intelligence…":"Ask about authorised Davonium company records…";composer.maxLength=Number(state.cache.intelligence?.policy?.max_message_chars||10000);}
       if(counter)counter.textContent=`0 / ${fmtNum(state.cache.intelligence?.policy?.max_message_chars||10000)} characters · ${generalMode?"General AI assistant":"Read-only company data"}`;
@@ -825,7 +860,7 @@
     try{if(!state.chatId){const made=unwrap(await api("intelligence","conversation.create",{title:message.slice(0,76),assistant_mode:state.chatMode||"general"}));state.chatId=made.conversation?.id;}if(!state.chatId)throw new Error("Could not create a private conversation.");
       const result=unwrap(await api("intelligence","chat",{conversation_id:state.chatId,message}));$("aiThinking")?.remove();if(host){const sources=result.data_sources_used||result.tools_used||[];host.insertAdjacentHTML("beforeend",`<article class="ai-message assistant"><div class="ai-message-head"><b>DVNM Intelligence</b><span>${fmtTime(result.generated_at||new Date().toISOString())}</span></div><div class="ai-message-content">${renderMarkdownSafe(result.answer||"No answer was returned.")}</div>${sources.length?`<div class="ai-source-tags">Nexus data sources · ${sources.map(esc).join(" · ")}</div>`:""}<div class="ai-source-tags">${fmtNum(result.usage?.input_tokens||0)} input tokens · ${fmtNum(result.usage?.output_tokens||0)} output tokens · ${result.usage?.estimated_cost_usd!=null?`$${fmtNum(result.usage.estimated_cost_usd)} estimated`:"cost not reported"}</div></article>`);host.scrollTop=host.scrollHeight;}
       await updateAIConversationTitleIfNeeded(state.chatId,message);notify("DVNM Intelligence completed your request.","success");
-    }catch(e){$("aiThinking")?.remove();if(host)host.insertAdjacentHTML("beforeend",`<div class="notice error">${esc(e.message)}<br><small>The server may have blocked the request because of service policy, data permissions, provider availability or usage limits. No answer was invented.</small></div>`);notify(e.message,"error");}
+    }catch(e){$("aiThinking")?.remove();const detail=e.payload?.provider_code?(`Provider: ${esc(e.payload.provider_code)} · HTTP ${Number(e.payload.provider_status||e.status||0)}`):"";if(host)host.insertAdjacentHTML("beforeend",`<div class="notice error ai-error-card"><b>${esc(e.message)}</b>${detail?`<small>${detail}</small>`:""}<small>Your message is saved. Retry when the service is available; Nexus will not invent an answer.</small></div>`);notify(e.message,"error");}
     finally{state.chatBusy=false;if(send){send.disabled=!state.cache.intelligence?.policy?.enabled;send.innerHTML='Ask DVNM <span>↗</span>';}await refreshAIUsageQuietly();}
   }
   async function updateAIConversationTitleIfNeeded(id,message){try{const conv=(state.cache.intelligence?.conversations||[]).find(x=>x.id===id);if(conv&&conv.title==="New conversation"){const title=message.replace(/\s+/g," ").slice(0,76);await api("intelligence","conversation.rename",{conversation_id:id,title});conv.title=title;const heading=$("aiConversationHeading");if(heading&&state.chatId===id)heading.textContent=title;}}catch(_){} }
