@@ -1,4 +1,4 @@
-const CACHE_NAME = "davonium-nexus-shell-v3-20261124";
+const CACHE_NAME = "davonium-nexus-shell-v4-20261124";
 const APP_SHELL = [
   "./",
   "./index.html",

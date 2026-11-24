@@ -396,6 +396,17 @@
       const y=top+step*plotHeight/3;
       return `<line class="os-chart-gridline" x1="${left}" y1="${y.toFixed(2)}" x2="${width-right}" y2="${y.toFixed(2)}"/>`;
     }).join("");
+    const plotWidth=width-left-right,groupWidth=plotWidth/labels.length;
+    const zeroY=yAt(0);
+    const bars=validSeries.map((item,index)=>{
+      const barWidth=Math.min(12,Math.max(3,groupWidth*.46/validSeries.length));
+      return item.values.map((value,i)=>{
+        const valueY=yAt(value),barHeight=Math.max(2,Math.abs(zeroY-valueY));
+        const x=xAt(i)-barWidth*validSeries.length/2+barWidth*index+(barWidth*.5);
+        const y=Math.min(zeroY,valueY);
+        return `<rect class="os-chart-bar os-chart-series-${index}" x="${(x-barWidth/2).toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="1.5"><title>${esc(item.name)} · ${esc(labels[i])}: ${esc(fmtNum(value))}</title></rect>`;
+      }).join("");
+    }).join("");
     const plots=validSeries.map((item,index)=>{
       const points=item.values.map((value,i)=>[xAt(i),yAt(value)]);
       const path=points.map((point,i)=>(i?"L":"M")+point[0].toFixed(2)+" "+point[1].toFixed(2)).join(" ");
@@ -411,7 +422,7 @@
     const legend=validSeries.map((item,index)=>`<span><i class="os-chart-legend-dot os-chart-series-${index}"></i>${esc(item.name)}</span>`).join("");
     return `<div class="os-thin-chart">
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Line chart showing ${esc(validSeries.map(x=>x.name).join(" and "))}">
-        ${grid}${plots}
+        ${grid}${bars}${plots}
       </svg>
       <div class="os-chart-ticks">${ticks}</div>
       <div class="os-chart-legend">${legend}</div>
@@ -741,7 +752,7 @@
     <div class="ai-history-backdrop" id="aiHistoryBackdrop" data-act="ai-close-history"></div><div class="ai-os-body"><aside class="ai-history"><div class="ai-history-title"><span>RECENT CONVERSATIONS</span><button class="icon-button tiny" data-act="ai-new">＋</button></div><div class="ai-history-list">${threads||`<div class="ai-history-empty">Your private conversations will appear here.</div>`}</div><div class="ai-history-foot"><span class="ai-status-dot ${enabled?"ready":"waiting"}"></span><span>${enabled?"AI service available":"AI service awaiting setup"}</span></div></aside>
     <main class="ai-chat-stage"><header class="ai-chat-head"><div><div class="os-eyebrow">${state.chatMode==="general"?"GENERAL ASSISTANT":"COMPANY INTELLIGENCE"}</div><h1 id="aiConversationHeading">${esc(selected?.title||mode)}</h1><p>${state.chatMode==="general"?"Everyday intelligence · no company data access":"Role-authorised Nexus records · read-only"}</p></div><div class="ai-head-tools"><span class="ai-mode-pill">${mode}</span><span class="ai-status ${enabled?"on":"off"}"><i></i>${enabled?"Available":"Paused"}</span></div></header>${warning}
     <div class="ai-messages" id="aiMessages">${state.chatId?loadingMarkup():welcome}</div>
-    <form id="aiComposer" class="ai-composer"><div class="ai-composer-top"><span class="ai-composer-context">${state.chatMode==="general"?"General assistant":"Secure company context"}</span><span id="aiCharCount">0 / ${fmtNum(maxChars)}</span></div><textarea id="aiMessageInput" rows="1" maxlength="${maxChars}" placeholder="${state.chatMode==="general"?"Message DVNM Intelligence…":"Ask about authorised company records…"}" ${enabled?"":"disabled"}></textarea><div class="ai-composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button class="btn btn-primary" id="aiSend" type="submit" ${enabled?"":"disabled"}>Send <span>↗</span></button></div></form>
+    <form id="aiComposer" class="ai-composer"><div class="ai-composer-top"><span class="ai-composer-context">${state.chatMode==="general"?"General assistant":"Secure company context"}</span><span id="aiCharCount">0 / ${fmtNum(maxChars)}</span></div><textarea id="aiMessageInput" rows="1" maxlength="${maxChars}" placeholder="${state.chatMode==="general"?"Message DVNM Intelligence…":"Ask about authorised company records…"}" ${enabled?"":"disabled"}></textarea><div class="ai-composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button class="btn btn-primary" id="aiSend" data-act="ai-send" type="submit" ${enabled?"":"disabled"}>Send <span>↗</span></button></div></form>
     <footer class="ai-usage-strip"><span>Requests today <b>${fmtNum(usage.requests_today??0)} / ${fmtNum(usage.requests_per_day_limit??policy.max_requests_per_day??"—")}</b></span><span>5-minute rate <b>${fmtNum(usage.requests_last_5m??0)} / ${fmtNum(usage.requests_per_5m_limit??policy.max_requests_per_5m??"—")}</b></span><span>Output tokens <b>${fmtNum(usage.tokens_today??0)} / ${fmtNum(usage.tokens_per_day_limit??policy.max_tokens_per_day??"—")}</b></span><span>Response cap <b>${fmtNum(policy.max_output_tokens||8192)}</b></span></footer></main></div></section>`;
     $("#pageContent").innerHTML=html;
     const input=$("aiMessageInput");
@@ -975,7 +986,7 @@
     else control=`<input id="${id}" name="${name}" type="${esc(type)}" value="${esc(value)}" ${f.required?"required":""} ${f.max?`maxlength="${f.max}"`:""} ${f.min!==undefined?`min="${f.min}"`:""} ${f.max!==undefined&&type==="number"?`max="${f.max}"`:""} ${f.placeholder?`placeholder="${esc(f.placeholder)}"`:""}>`;
     return `<div class="field ${f.span===2?"span-two":""}">${type==="checkbox"?control:`<label for="${id}">${esc(f.label)}</label>${control}`}${f.help?`<small class="field-note">${esc(f.help)}</small>`:""}</div>`;
   }
-  function openForm(opts){const fields=opts.fields||[];const body=`<form id="nexusDynamicForm" class="modal-form"><div class="form-grid">${fields.map(renderField).join("")}</div><div class="form-error" id="formError" role="alert"></div><div class="modal-foot"><button type="button" class="btn btn-secondary" id="cancelDynamicForm">Cancel</button><button type="submit" class="btn btn-primary" id="submitDynamicForm">${esc(opts.submitLabel||"Save changes")} ↗</button></div></form>`;openModal("DAVONIUM NEXUS",opts.title,body,opts.description||"");$("cancelDynamicForm").onclick=closeModal;$("nexusDynamicForm").onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,values={};for(const field of fields){const node=form.elements.namedItem(field.name);if(!node)continue;values[field.name]=field.type==="file"?node.files?.[0]||null:field.type==="checkbox"?node.checked:node.value;}
+  function openForm(opts){const fields=opts.fields||[];const body=`<form id="nexusDynamicForm" class="modal-form"><div class="form-grid">${fields.map(renderField).join("")}</div><div class="form-error" id="formError" role="alert"></div><div class="modal-foot"><button type="button" class="btn btn-secondary" id="cancelDynamicForm">Cancel</button><button type="submit" class="btn btn-primary" id="submitDynamicForm" data-act="modal-submit">${esc(opts.submitLabel||"Save changes")} ↗</button></div></form>`;openModal("DAVONIUM NEXUS",opts.title,body,opts.description||"");$("cancelDynamicForm").onclick=closeModal;$("nexusDynamicForm").onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,values={};for(const field of fields){const node=form.elements.namedItem(field.name);if(!node)continue;values[field.name]=field.type==="file"?node.files?.[0]||null:field.type==="checkbox"?node.checked:node.value;}
       const error=$("formError"),button=$("submitDynamicForm");error.textContent="";button.disabled=true;button.textContent="Saving securely…";try{await opts.onSubmit?.(values,event);}catch(e){error.textContent=e.message||"The request could not be completed.";button.disabled=false;button.textContent=`${opts.submitLabel||"Save changes"} ↗`;}
     };
   }
@@ -1054,129 +1065,75 @@
     });
   }
   function wire(){
-    // One early, resilient router handles every generated dashboard control.
-    // The sidebar has its own navigation handler, but all in-page buttons,
-    // cards, AI actions, finance tabs and mobile shortcuts depend on this.
+    // One capture-phase router owns every generated navigation and action control.
+    // It handles nested SVG targets and prevents duplicate delegated handlers.
     document.addEventListener("click",event=>{
       const target=event.target instanceof Element?event.target:event.target?.parentElement;
       if(!target)return;
-
+      const financeTab=target.closest("[data-finance-tab]");
+      if(financeTab&&$("#pageContent")?.contains(financeTab)){
+        event.preventDefault();event.stopPropagation();
+        state.financeTab=financeTab.dataset.financeTab;
+        void renderFinance();
+        return;
+      }
       const page=target.closest("[data-page]");
       if(page){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         void navigate(page.dataset.page);
         return;
       }
-
       const mobileMore=target.closest('[data-act="mobile-more"]');
       if(mobileMore){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         $("#sidebar")?.classList.add("open");
         $("#mobileScrim")?.classList.add("show");
         return;
       }
-
       const modalAct=target.closest("[data-modal-act]");
       if(modalAct){
-        event.preventDefault();
-        const action=modalAct.dataset.modalAct;
-        const id=modalAct.dataset.id;
-        const projectId=modalAct.dataset.project;
-        closeModal();
-        void dispatchAction(action,id,{projectId});
+        event.preventDefault();event.stopPropagation();
+        const action=modalAct.dataset.modalAct,id=modalAct.dataset.id,projectId=modalAct.dataset.project;
+        void closeModal().then(()=>dispatchAction(action,id,{projectId}));
         return;
       }
-
       const action=target.closest("[data-act]");
       if(action){
-        event.preventDefault();
-        if(action.dataset.act==="ai-manage-conversation"){
-          manageAIConversation(action.dataset.id);
-          return;
-        }
-        if(action.dataset.act==="ai-toggle-history"){
+        event.preventDefault();event.stopPropagation();
+        const act=action.dataset.act;
+        if(act==="privacy-reject"){savePrivacyConsent(false);notify("Optional analytics disabled.","success");return;}
+        if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
+        if(act==="privacy-customize"){openPrivacySettings();return;}
+        if(act==="ai-send"){void sendAIMessage();return;}
+        if(act==="modal-submit"){$("nexusDynamicForm")?.requestSubmit();return;}
+        if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
+        if(act==="expand-sidebar"){setSidebarCollapsed(false);return;}
+        if(act==="ai-manage-conversation"){manageAIConversation(action.dataset.id);return;}
+        if(act==="ai-toggle-history"){
           const history=$(".ai-history");
           history?.classList.toggle("open");
           $("#aiHistoryBackdrop")?.classList.toggle("visible",history?.classList.contains("open")===true);
           return;
         }
-        if(action.dataset.act==="ai-close-history"){
+        if(act==="ai-close-history"){
           $(".ai-history")?.classList.remove("open");
           $("#aiHistoryBackdrop")?.classList.remove("visible");
           return;
         }
-        dispatchAction(action.dataset.act,action.dataset.id,{projectId:action.dataset.project});
+        dispatchAction(act,action.dataset.id,{projectId:action.dataset.project,status:action.dataset.status});
         return;
       }
-
       const accent=target.closest("[data-accent-theme]");
       if(accent){
-        event.preventDefault();
+        event.preventDefault();event.stopPropagation();
         state.accentTheme=accent.dataset.accentTheme;
         applyAccentTheme();
         if(state.currentPage==="settings")void renderSettings();
         return;
       }
-
-      const tab=target.closest("[data-finance-tab]");
-      if(tab&&$("#pageContent")?.contains(tab)){
-        event.preventDefault();
-        state.financeTab=tab.dataset.financeTab;
-        void renderFinance();
-      }
-    });
+    },true);
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
-    const bindPageNavigation=root=>root?.addEventListener("click",event=>{
-      const item=event.target.closest("[data-page]");
-      if(!item||!root.contains(item))return;
-      event.preventDefault();
-      event.stopPropagation();
-      void navigate(item.dataset.page);
-    });
-    bindPageNavigation($("#nav"));
-    bindPageNavigation($("#mobileAppNav"));
-    $("#mobileAppNav").addEventListener("click",event=>{
-      const more=event.target.closest('[data-act="mobile-more"]');
-      if(!more)return;
-      event.preventDefault();
-      event.stopPropagation();
-      $("#sidebar").classList.add("open");
-      $("#mobileScrim").classList.add("show");
-    });
-    $("#pageContent").addEventListener("click",event=>{
-      const conversationMenu=event.target.closest('[data-act="ai-manage-conversation"]');
-      if(conversationMenu&&$("#pageContent").contains(conversationMenu)){
-        event.preventDefault();event.stopPropagation();
-        manageAIConversation(conversationMenu.dataset.id);
-        return;
-      }
-      const accent=event.target.closest("[data-accent-theme]");
-      if(accent&&$("#pageContent").contains(accent)){
-        event.preventDefault();event.stopPropagation();
-        state.accentTheme=accent.dataset.accentTheme;
-        applyAccentTheme();
-        void renderSettings();
-        return;
-      }
-      const theme=event.target.closest('[data-act^="theme-"]');
-      if(theme&&$("#pageContent").contains(theme)){
-        event.preventDefault();event.stopPropagation();
-        const requested=theme.dataset.act.replace("theme-","");
-        if(["dark","black","light","system"].includes(requested)){
-          state.theme=requested;
-          applyTheme();
-          void renderSettings();
-        }
-        return;
-      }
-      const tab=event.target.closest("[data-finance-tab]");
-      if(!tab||!$("#pageContent").contains(tab))return;
-      event.preventDefault();
-      event.stopPropagation();
-      state.financeTab=tab.dataset.financeTab;
-      void renderFinance();
-    });
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;

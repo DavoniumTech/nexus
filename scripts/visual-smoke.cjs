@@ -56,46 +56,50 @@ async function main(){
   loginPage.on("console", message => {
     if (message.type() === "error") errors.push("signed-in console: " + message.text());
   });
-  await loginPage.route("**/supabase-js@2*", route => route.fulfill({
+  await loginPage.addInitScript(() => {
+    const user = { id: "nexus-smoke-user", email: "nexus-smoke@example.test" };
+    const session = {
+      access_token: "nexus-smoke-access-token",
+      refresh_token: "nexus-smoke-refresh-token",
+      token_type: "bearer",
+      expires_in: 3600,
+      user
+    };
+    let activeSession = session;
+    window.supabase = {
+      createClient: function () {
+        return {
+          auth: {
+            onAuthStateChange: function () {
+              return { data: { subscription: { unsubscribe: function () {} } } };
+            },
+            getSession: async function () {
+              return { data: { session: activeSession }, error: null };
+            },
+            signInWithPassword: async function () {
+              activeSession = session;
+              return { data: { session, user }, error: null };
+            },
+            signOut: async function () {
+              activeSession = null;
+              return { error: null };
+            }
+          }
+        };
+      }
+    };
+  });
+  await loginPage.route(/supabase-js@2/, route => route.fulfill({
     status: 200,
     contentType: "application/javascript",
-    body: `
-      window.supabase = {
-        createClient: function () {
-          let activeSession = null;
-          const user = { id: "nexus-smoke-user", email: "nexus-smoke@example.test" };
-          const session = {
-            access_token: "nexus-smoke-access-token",
-            refresh_token: "nexus-smoke-refresh-token",
-            token_type: "bearer",
-            expires_in: 3600,
-            user: user
-          };
-          return {
-            auth: {
-              onAuthStateChange: function () {
-                return { data: { subscription: { unsubscribe: function () {} } } };
-              },
-              getSession: async function () {
-                return { data: { session: activeSession }, error: null };
-              },
-              signInWithPassword: async function () {
-                activeSession = session;
-                return { data: { session: session, user: user }, error: null };
-              },
-              signOut: async function () {
-                activeSession = null;
-                return { error: null };
-              }
-            }
-          };
-        }
-      };
-    `
+    body: "/* Supabase auth is supplied by the isolated addInitScript mock. */"
   }));
   const smokeConversationId = "11111111-1111-4111-8111-111111111111";
   const mockConversations = [];
   const mockAnalyticsActions = [];
+  const mockFinanceResponses = [];
+  const mockAIRequests = [];
+  const mockAIResponses = [];
   loginPage.on("dialog", dialog => dialog.accept());
   await loginPage.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
     const url = new URL(route.request().url());
@@ -125,6 +129,7 @@ async function main(){
           { key: "finance.entries.manage", allowed: true },
           { key: "finance.budgets.manage", allowed: true },
           { key: "analytics.view", allowed: true },
+          { key: "intelligence.use", allowed: true },
           { key: "intelligence.manage", allowed: true }
         ]
       };
@@ -185,6 +190,13 @@ async function main(){
         payload = { success: true, answer: "Hello from DVNM Intelligence.", tools_used: [], data_sources_used: [], usage: { input_tokens: 5, output_tokens: 12, estimated_cost_usd: 0.0001 }, generated_at: new Date().toISOString() };
       }
     }
+    if (functionName === "nexus-analytics" && body.action === "finance.analytics") {
+      mockFinanceResponses.push({ action: body.action, response: payload });
+    }
+    if (functionName === "nexus-intelligence") {
+      mockAIRequests.push(body.action || "missing-action");
+      mockAIResponses.push({ action: body.action || "missing-action", response: payload });
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -196,27 +208,31 @@ async function main(){
       body: JSON.stringify(payload)
     });
   });
-  await loginPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
-  await loginPage.locator("#authEmail").fill("nexus-smoke@example.test");
-  await loginPage.locator("#authPassword").fill("test-only-password");
   const authRequests = [];
   loginPage.on("request", request => {
     if (/supabase-js|functions\/v1|auth\//.test(request.url())) authRequests.push(request.url());
   });
-  await loginPage.locator("#authSubmit").click();
-  await loginPage.waitForTimeout(1500);
+  await loginPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
+  await loginPage.waitForFunction(() => typeof window.supabase?.createClient === "function");
+  await loginPage.waitForFunction(() => {
+    const app = document.querySelector("#app");
+    const auth = document.querySelector("#authScreen");
+    return app && !app.classList.contains("hidden") && auth?.classList.contains("hidden");
+  }, null, { timeout: 12000 }).catch(() => {});
   const bootDiagnostic = await loginPage.evaluate(() => ({
     appClass: document.querySelector("#app")?.className,
     authClass: document.querySelector("#authScreen")?.className,
     authMessage: document.querySelector("#authMessage")?.textContent,
     connection: document.querySelector("#connectionText")?.textContent,
+    hasSupabase: typeof window.supabase?.createClient === "function",
     title: document.querySelector("#pageCrumb")?.textContent,
     body: document.body.innerText.slice(0, 900)
   }));
   console.log("NEXUS_BOOT_DIAGNOSTIC", JSON.stringify({ ...bootDiagnostic, errors, authRequests }));
   assert.ok(
-    document.querySelector("#app") && !document.querySelector("#app").classList.contains("hidden") &&
-    document.querySelector("#authScreen")?.classList.contains("hidden"),
+    bootDiagnostic.hasSupabase &&
+    !String(bootDiagnostic.appClass || "").split(/\s+/).includes("hidden") &&
+    String(bootDiagnostic.authClass || "").split(/\s+/).includes("hidden"),
     "The isolated sign-in fixture must finish the authenticated Nexus boot"
   );
   await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
@@ -224,6 +240,12 @@ async function main(){
     "Authenticated dashboard must display the resolved company");
   assert.ok(await loginPage.locator(".os-module-card").count() >= 4,
     "Authenticated dashboard must render company modules");
+  assert.ok(await loginPage.locator(".os-kpi-ring .os-ring").count() >= 3,
+    "The overview must render circular operating indicators");
+  await loginPage.locator('.os-module-card[data-page="projects"]').click();
+  await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Projects");
+  await loginPage.locator('#nav [data-page="overview"]').click();
+  await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Nexus Overview");
 
   assert.equal(await loginPage.locator(".notification-bell svg").count(), 1,
     "Top navigation must use a real notification bell icon");
@@ -259,12 +281,14 @@ async function main(){
   console.log("NEXUS_ANALYTICS_SMOKE_DIAGNOSTIC", JSON.stringify({ ...analyticsDiagnostic, requestedActions: mockAnalyticsActions, browserErrors: errors }));
   assert.ok(analyticsDiagnostic.chartCount >= 1,
     "Company analytics must render thin SVG trend lines from its consented analytics response");
+  assert.ok(await loginPage.locator(".os-thin-chart .os-chart-bar").count() > 0,
+    "Company analytics must render translucent multicolour daily bars as well as trend lines");
 
   // Finance analytics uses posted-ledger fixture data, never production sample records.
   await loginPage.locator('#nav [data-page="finance"]').click();
   await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Finance control");
   await loginPage.locator('[data-finance-tab="analytics"]').click();
-  await loginPage.waitForTimeout(900);
+  await loginPage.waitForSelector(".os-finance-chart-card .os-chart-line", { timeout: 10000 });
   const financeDiagnostic = await loginPage.evaluate(() => ({
     heading: document.querySelector("#pageCrumb")?.textContent,
     title: document.querySelector("#pageContent .page-head h1")?.textContent,
@@ -272,7 +296,7 @@ async function main(){
     chartCount: document.querySelectorAll(".os-finance-chart-card .os-thin-chart svg").length,
     pageError: document.querySelector("#pageContent .notice.error")?.textContent || ""
   }));
-  console.log("NEXUS_FINANCE_SMOKE_DIAGNOSTIC", JSON.stringify({ ...financeDiagnostic, requestedActions: mockAnalyticsActions, browserErrors: errors }));
+  console.log("NEXUS_FINANCE_SMOKE_DIAGNOSTIC", JSON.stringify({ ...financeDiagnostic, requestedActions: mockAnalyticsActions, mockFinanceResponses, browserErrors: errors }));
   assert.ok(financeDiagnostic.chartCount >= 1 && await loginPage.locator(".os-finance-chart-card .os-chart-line").count() >= 2,
     "Finance analytics must render separate revenue and expense trend lines from posted ledger fixture data");
   await loginPage.locator('[data-finance-tab="overview"]').click();
@@ -290,6 +314,12 @@ async function main(){
   await loginPage.waitForFunction(() => document.querySelector("#sidebar").classList.contains("open"));
   await loginPage.locator('#sidebar [data-page="overview"]').click();
   await loginPage.waitForFunction(() => !document.querySelector("#sidebar").classList.contains("open"));
+  await loginPage.locator('.mobile-nav-item[data-page="intelligence"]').click();
+  await loginPage.waitForSelector(".ai-os", { state: "visible" });
+  assert.notEqual(await loginPage.locator(".mobile-app-nav").evaluate(el => getComputedStyle(el).display), "none",
+    "Phone navigation must stay available while DVNM Intelligence is open");
+  await loginPage.locator('.mobile-nav-item[data-page="overview"]').click();
+  await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
   await loginPage.setViewportSize({ width: 1440, height: 900 });
   await loginPage.waitForSelector(".mobile-app-nav", { state: "hidden" });
 
@@ -325,10 +355,25 @@ async function main(){
   // Exercise Company Intelligence and the complete conversation lifecycle.
   await loginPage.locator('#nav [data-page="intelligence"]').click();
   await loginPage.waitForSelector("#aiModeSelect");
+  assert.ok(await loginPage.locator(".ai-return-home").isVisible(),
+    "Desktop and tablet DVNM Intelligence must provide a visible route back to Nexus");
+  await loginPage.locator(".ai-return-home").click();
+  await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
+  await loginPage.locator('#nav [data-page="intelligence"]').click();
+  await loginPage.waitForSelector("#aiModeSelect");
   await loginPage.locator("#aiModeSelect").selectOption("company");
   await loginPage.waitForSelector('[data-ai-conversation]');
   await loginPage.locator("#aiMessageInput").fill("hello");
   await loginPage.locator("#aiSend").click();
+  await loginPage.waitForTimeout(900);
+  const aiDiagnostic = await loginPage.evaluate(() => ({
+    buttonDisabled: document.querySelector("#aiSend")?.disabled,
+    composerExists: !!document.querySelector("#aiComposer"),
+    composerValue: document.querySelector("#aiMessageInput")?.value,
+    messageText: document.querySelector("#aiMessages")?.innerText,
+    formConnected: document.querySelector("#aiComposer")?.isConnected
+  }));
+  console.log("NEXUS_AI_SMOKE_DIAGNOSTIC", JSON.stringify({ ...aiDiagnostic, mockAIRequests, mockAIResponses, browserErrors: errors }));
   await loginPage.waitForSelector(".ai-message.assistant .ai-message-content");
   assert.ok((await loginPage.locator(".ai-message.assistant .ai-message-content").last().textContent()).includes("Hello from DVNM Intelligence"),
     "Company Intelligence chat should render its assistant response");
