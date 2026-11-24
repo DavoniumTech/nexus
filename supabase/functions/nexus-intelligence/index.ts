@@ -10,7 +10,8 @@ import { withSupabase } from "npm:@supabase/server@1";
 // Provider model retained from the supplied function: gemini-3.5-flash-lite
 //
 // Uses the existing withSupabase authenticated-user architecture.
-// Does not use a service-role database client.
+// Uses ctx.supabaseAdmin only for a server-side one-way ledger-key hash sync.
+// All organisation, permission, conversation and business reads remain on ctx.supabase.
 // Does not accept browser-supplied conversation history.
 // Reads persistent conversations from the AI-specific tables created by
 // the DVNM Intelligence migration:
@@ -1630,7 +1631,15 @@ export default {
           p_request_id: reqId,
           p_server_key: ledgerKey
         });
-        if (reservationResult.error) return reply({ success: false, code: "AI_RESERVATION_FAILED", error: "The Nexus usage ledger could not reserve this request." }, 500);
+        if (reservationResult.error) {
+          console.error("[NEXUS] AI usage reservation failed:", reservationResult.error.code || "RESERVATION_FAILED");
+          return reply({
+            success: false,
+            code: "AI_RESERVATION_FAILED",
+            reservation_code: reservationResult.error.code || "RESERVATION_FAILED",
+            error: "The secure usage ledger rejected this request. Refresh Nexus and retry; if the problem continues, contact the Nexus administrator."
+          }, 503);
+        }
 
         const reservation = asObject(reservationResult.data);
         if (!reservation?.approved) return reservationError(reservation ?? { code: "RESERVATION_FAILED" });
