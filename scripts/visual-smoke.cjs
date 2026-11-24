@@ -209,6 +209,19 @@ async function main(){
     "Authenticated dashboard must display the resolved company");
   assert.ok(await loginPage.locator(".os-module-card").count() >= 4,
     "Authenticated dashboard must render company modules");
+
+  assert.equal(await loginPage.locator(".notification-bell svg").count(), 1,
+    "Top navigation must use a real notification bell icon");
+  await loginPage.locator("#collapseNav").click();
+  await loginPage.waitForFunction(() => document.querySelector("#app").classList.contains("sidebar-collapsed"));
+  assert.ok(await loginPage.locator("#expandNav").isVisible(),
+    "A dedicated desktop sidebar restore control must appear after collapse");
+  await loginPage.locator("#expandNav").click();
+  await loginPage.waitForFunction(() => !document.querySelector("#app").classList.contains("sidebar-collapsed"));
+  assert.equal(await loginPage.evaluate(() => localStorage.getItem("nexus_sidebar_collapsed")), "false",
+    "Sidebar expand/collapse state must persist");
+
+
   if (await loginPage.locator("#cookieReject").isVisible()) {
     await loginPage.locator("#cookieReject").click();
     await loginPage.locator("#cookieConsent").waitFor({ state: "hidden" });
@@ -226,22 +239,45 @@ async function main(){
   await loginPage.waitForSelector(".os-finance-chart-card .os-thin-chart svg");
   assert.ok(await loginPage.locator(".os-finance-chart-card .os-chart-line").count() >= 2,
     "Finance analytics must render separate revenue and expense trend lines");
+  await loginPage.locator('[data-finance-tab="overview"]').click();
+  assert.ok(await loginPage.locator(".metric-symbol svg").count() >= 4,
+    "Finance KPI cards must render vector icons rather than icon-name text");
+
+  // Switch to the phone layout: app navigation, drawer recovery and no horizontal overflow.
+  await loginPage.setViewportSize({ width: 390, height: 844 });
+  await loginPage.waitForSelector(".mobile-app-nav", { state: "visible" });
+  assert.equal(await loginPage.locator(".mobile-nav-item").count(), 5,
+    "Phone layout must have five compact primary navigation destinations");
+  const phoneWidth = await loginPage.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+  assert.ok(phoneWidth.scroll <= phoneWidth.client + 1, "The authenticated phone layout must not overflow horizontally");
+  await loginPage.locator('.mobile-nav-item[data-act="mobile-more"]').click();
+  await loginPage.waitForFunction(() => document.querySelector("#sidebar").classList.contains("open"));
+  await loginPage.locator('#sidebar [data-page="overview"]').click();
+  await loginPage.waitForFunction(() => !document.querySelector("#sidebar").classList.contains("open"));
+  await loginPage.setViewportSize({ width: 1440, height: 900 });
+  await loginPage.waitForSelector(".mobile-app-nav", { state: "hidden" });
 
   // Test all four appearance modes from the real settings panel.
   await loginPage.locator('#nav [data-page="settings"]').click();
   await loginPage.waitForSelector('[data-act="theme-black"]', { state: "visible" });
+  assert.equal(await loginPage.locator("[data-accent-theme]").count(), 10,
+    "Appearance settings must expose ten separate accent themes");
+  await loginPage.locator('[data-accent-theme="rose"]').click();
+  assert.equal(await loginPage.evaluate(() => document.documentElement.dataset.accentTheme), "rose",
+    "Accent theme selection must apply independently of appearance");
+  await loginPage.locator('[data-accent-theme="ocean"]').click();
   await loginPage.locator('[data-act="theme-black"]').click();
   assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("black-theme")),
-    "Elevated Black must apply a separate black theme");
+    "Dark Mode must apply a separate black theme");
   await loginPage.locator('[data-act="theme-light"]').click();
   assert.ok(await loginPage.evaluate(() => document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme")),
-    "Light theme must be distinct from Elevated Black");
+    "Light theme must be distinct from Dark Mode");
   await loginPage.locator('[data-act="theme-system"]').click();
   assert.equal(await loginPage.evaluate(() => localStorage.getItem("nexus_theme")), "system",
     "System appearance preference must persist");
   await loginPage.locator('[data-act="theme-dark"]').click();
   assert.ok(await loginPage.evaluate(() => !document.documentElement.classList.contains("light-theme") && !document.documentElement.classList.contains("black-theme")),
-    "Navy Dark must remain distinct from Light and Elevated Black");
+    "Dark appearance must remain distinct from Light and Dark Mode");
 
   // Exercise Company Intelligence and the complete conversation lifecycle.
   await loginPage.locator('#nav [data-page="intelligence"]').click();
@@ -294,7 +330,7 @@ async function main(){
 
 
   assert.deepEqual(errors,[],"Browser page errors must be empty");
-  console.log("Nexus responsive UI, authentication, four themes, DVNM chat and conversation lifecycle smoke tests passed.");
+  console.log("Nexus desktop and mobile UI, sidebar recovery, ten accents, four appearances, analytics, finance charts and DVNM chat lifecycle smoke tests passed.");
  }finally{await browser.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
