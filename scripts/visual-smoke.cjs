@@ -98,6 +98,8 @@ async function main(){
   const mockConversations = [];
   const mockAnalyticsActions = [];
   const mockFinanceResponses = [];
+  const mockAIRequests = [];
+  const mockAIResponses = [];
   loginPage.on("dialog", dialog => dialog.accept());
   await loginPage.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
     const url = new URL(route.request().url());
@@ -190,6 +192,10 @@ async function main(){
     }
     if (functionName === "nexus-analytics" && body.action === "finance.analytics") {
       mockFinanceResponses.push({ action: body.action, response: payload });
+    }
+    if (functionName === "nexus-intelligence") {
+      mockAIRequests.push(body.action || "missing-action");
+      mockAIResponses.push({ action: body.action || "missing-action", response: payload });
     }
     await route.fulfill({
       status: 200,
@@ -359,6 +365,15 @@ async function main(){
   await loginPage.waitForSelector('[data-ai-conversation]');
   await loginPage.locator("#aiMessageInput").fill("hello");
   await loginPage.locator("#aiSend").click();
+  await loginPage.waitForTimeout(900);
+  const aiDiagnostic = await loginPage.evaluate(() => ({
+    buttonDisabled: document.querySelector("#aiSend")?.disabled,
+    composerExists: !!document.querySelector("#aiComposer"),
+    composerValue: document.querySelector("#aiMessageInput")?.value,
+    messageText: document.querySelector("#aiMessages")?.innerText,
+    formConnected: document.querySelector("#aiComposer")?.isConnected
+  }));
+  console.log("NEXUS_AI_SMOKE_DIAGNOSTIC", JSON.stringify({ ...aiDiagnostic, mockAIRequests, mockAIResponses, browserErrors: errors }));
   await loginPage.waitForSelector(".ai-message.assistant .ai-message-content");
   assert.ok((await loginPage.locator(".ai-message.assistant .ai-message-content").last().textContent()).includes("Hello from DVNM Intelligence"),
     "Company Intelligence chat should render its assistant response");
