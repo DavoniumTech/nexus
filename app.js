@@ -74,6 +74,7 @@
     "shield-check": '<path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/>',
     coins: '<circle cx="8" cy="8" r="5"/><path d="M11 12a5 5 0 1 0 5-5M3 8v2a5 5 0 0 0 10 0V8M16 12h2m-1-1v2"/>',
     "trending-up": '<path d="m3 17 6-6 4 4 8-9M15 6h6v6"/>',
+    more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
     x: '<path d="m18 6-12 12M6 6l12 12"/>'
   };
 
