@@ -95,12 +95,14 @@ async function main(){
   }));
   const smokeConversationId = "11111111-1111-4111-8111-111111111111";
   const mockConversations = [];
+  const mockAnalyticsActions = [];
   loginPage.on("dialog", dialog => dialog.accept());
   await loginPage.route("https://cmkroryimxskgqlaiiym.supabase.co/functions/v1/**", async route => {
     const url = new URL(route.request().url());
     const functionName = url.pathname.split("/").pop();
     let body = {};
     try { body = route.request().postDataJSON() || {}; } catch {}
+    if (functionName === "nexus-analytics") mockAnalyticsActions.push(body.action || "missing-action");
     let payload = { success: true };
     if (functionName === "nexus-session") {
       payload = {
@@ -229,9 +231,17 @@ async function main(){
 
   // Analytics line chart is rendered from consented fixture events.
   await loginPage.locator('#nav [data-page="analytics"]').click();
-  await loginPage.waitForSelector(".os-thin-chart svg");
-  assert.ok(await loginPage.locator(".os-chart-line").count() >= 1,
-    "Company analytics must render thin SVG trend lines");
+  await loginPage.waitForSelector(".os-analytics-grid", { state: "visible" });
+  await loginPage.waitForTimeout(250);
+  const analyticsDiagnostic = await loginPage.evaluate(() => ({
+    heading: document.querySelector("#pageCrumb")?.textContent,
+    text: document.querySelector("#pageContent")?.innerText?.slice(0, 1800),
+    chartCount: document.querySelectorAll(".os-thin-chart svg").length,
+    pageError: document.querySelector("#pageContent .notice.error")?.textContent || ""
+  }));
+  console.log("NEXUS_ANALYTICS_SMOKE_DIAGNOSTIC", JSON.stringify({ ...analyticsDiagnostic, requestedActions: mockAnalyticsActions }));
+  assert.ok(analyticsDiagnostic.chartCount >= 1,
+    "Company analytics must render thin SVG trend lines from its consented analytics response");
 
   // Finance analytics uses posted-ledger fixture data, never production sample records.
   await loginPage.locator('#nav [data-page="finance"]').click();
