@@ -1014,6 +1014,15 @@
   }
   function wire(){
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
+    const bindPageNavigation=root=>root?.addEventListener("click",event=>{
+      const item=event.target.closest("[data-page]");
+      if(!item||!root.contains(item))return;
+      event.preventDefault();
+      event.stopPropagation();
+      void navigate(item.dataset.page);
+    });
+    bindPageNavigation($("#nav"));
+    bindPageNavigation($("#mobileAppNav"));
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
