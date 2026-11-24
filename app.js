@@ -110,10 +110,11 @@
 
   const state = {
     sb:null, session:null, user:null, profile:{}, workspace:{}, role:"member", currentPage:"overview", cache:{},
-    permissions:[], permissionMap:{}, booting:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")||"violet",
+    permissions:[], permissionMap:{}, booting:false, passwordRecovery:false, isCollapsed:localStorage.getItem("nexus_sidebar_collapsed")==="true", theme:localStorage.getItem("nexus_theme")||"system", accentTheme:localStorage.getItem("nexus_accent_theme")==="ocean"?"violet":(localStorage.getItem("nexus_accent_theme")||"violet"),
     chatId:null, chatMode:"general", chatBusy:false, realtimeChannel:null, realtimeRefreshTimer:null, realtimeAIRefreshTimer:null, currentChannel:null, currentDirect:null, communicationsTab:"channels", directConversations:[], commandMatches:[], commandIndex:0, notifPrefs:null
   };
 
+  const AUTH_STORAGE_KEY = `sb-${PROJECT_REF}-auth-token`;
   const DEFAULT_PUBLISHABLE_KEY = "sb_publishable_aaf6R55TSYLgz3wdl6VYxA_umccmSh7";
   function cfg(){
     const url=(localStorage.getItem("nexus_url")||sessionStorage.getItem("nexus_url")||DEFAULT_URL).replace(/\/$/,"");
@@ -123,11 +124,61 @@
     const key=url===DEFAULT_URL?DEFAULT_PUBLISHABLE_KEY:savedKey;
     return {url,key};
   }
-  function connectedClient(){ const c=cfg(); if(!window.supabase||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
+  function connectedClient(){ const c=cfg(); if(!window.supabase||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:AUTH_STORAGE_KEY,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
   function notify(message,type="info"){ const host=$("toastRegion"); const el=document.createElement("div");el.className="toast"+(type==="error"?" error":type==="success"?" success":"");el.textContent=message;host.appendChild(el);setTimeout(()=>el.remove(),4300); }
   function connection(ok,message){ $("connectionText").textContent=message|| (ok?"Connected securely":"Connection issue"); $("sidebarStatusDot").className="status-dot"+(ok?"": " bad"); }
-  function authMessage(message,bad=false){ const el=$("authMessage");el.textContent=message;el.className="notice"+(bad?" error":""); }
+  function authMessage(message,bad=false){ const el=$("authMessage");el.textContent=message||"";el.className=message?"notice"+(bad?" error":""):"notice hidden"; }
   function showAuth(message="",bad=false){ $("authScreen").classList.remove("hidden");$("app").classList.add("hidden");if(message)authMessage(message,bad); }
+  function isStaleRefreshTokenError(error){const value=`${error?.code||""} ${error?.message||error||""}`.toLowerCase();return /refresh_token_not_found|invalid refresh token|refresh token not found|refresh token.*revok/.test(value);}
+  function friendlyAuthError(error){
+    const code=String(error?.code||"").toLowerCase(),message=String(error?.message||"").toLowerCase();
+    if(isStaleRefreshTokenError(error))return "This browser had an expired or revoked saved session. It has been cleared. Sign in again.";
+    if(code==="invalid_credentials"||message.includes("invalid login credentials"))return "The email or password is incorrect. Check both, or use “Forgot password?” to create a new password.";
+    if(code==="email_not_confirmed"||message.includes("email not confirmed"))return "This account still needs email confirmation. Open the confirmation email from Supabase, then sign in again.";
+    if(code==="too_many_requests"||message.includes("rate limit"))return "There have been too many attempts. Wait a few minutes before trying again.";
+    if(/failed to fetch|networkerror|network request failed|fetch failed|timeout/.test(message))return "Nexus could not reach Supabase. Check your internet connection and try again.";
+    return error?.message||"Sign-in could not be completed. Please try again.";
+  }
+  async function clearLocalAuthSession(){
+    try{const result=await state.sb?.auth.signOut({scope:"local"});if(result?.error)console.warn("Nexus local session cleanup:",result.error.message);}catch(error){console.warn("Nexus local session cleanup:",error?.message||error);}
+    try{localStorage.removeItem(AUTH_STORAGE_KEY);sessionStorage.removeItem(AUTH_STORAGE_KEY);}catch(error){console.warn("Nexus local auth storage cleanup:",error?.message||error);}
+    state.session=null;state.user=null;
+  }
+  function showPasswordRecoveryForm(session=null){
+    state.passwordRecovery=true;
+    if(session){state.session=session;state.user=session.user||null;}
+    $("authTitle").textContent="Choose a new password.";
+    $("authDescription").textContent="Your secure reset link has been verified. Choose a new password for your Nexus account.";
+    $("authForm").classList.add("hidden");
+    $(".auth-links").classList.add("hidden");
+    $("passwordRecoveryPanel").classList.remove("hidden");
+    authMessage("Enter and confirm your new password below.",false);
+    $("newAuthPassword").focus();
+  }
+  async function submitPasswordRecovery(event){
+    event.preventDefault();
+    const password=$("newAuthPassword").value,confirmPassword=$("confirmAuthPassword").value,button=$("passwordRecoverySubmit");
+    if(password.length<8){authMessage("Use at least 8 characters for your new password.",true);return;}
+    if(password!==confirmPassword){authMessage("The two passwords do not match. Please enter them again.",true);return;}
+    button.disabled=true;button.textContent="Updating password…";
+    try{
+      const {data,error}=await state.sb.auth.updateUser({password});
+      if(error)throw error;
+      state.passwordRecovery=false;
+      state.session=state.session||null;
+      if(data?.user)state.user=data.user;
+      $("newAuthPassword").value="";$("confirmAuthPassword").value="";
+      $("passwordRecoveryPanel").classList.add("hidden");
+      $("authForm").classList.remove("hidden");
+      $(".auth-links").classList.remove("hidden");
+      await clearLocalAuthSession();
+      state.passwordRecovery=false;
+      $("authTitle").textContent="Welcome back.";
+      $("authDescription").textContent="Sign in with your Davonium Technologies account.";
+      showAuth("Your password has been updated successfully. Sign in using your new password.",false);
+    }catch(error){authMessage(friendlyAuthError(error),true);}
+    finally{button.disabled=false;button.textContent="Update password";}
+  }
   function applyAccentTheme(){
     if(!ACCENT_PALETTES[state.accentTheme])state.accentTheme="violet";
     const palette=ACCENT_PALETTES[state.accentTheme],root=document.documentElement;
@@ -216,15 +267,24 @@
     applyTheme();
     if(!connectedClient()){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
     state.sb.auth.onAuthStateChange((event,session)=>{
-      if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;showAuth();}
+      if(event==="PASSWORD_RECOVERY"){showPasswordRecoveryForm(session);return;}
+      if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;state.passwordRecovery=false;showAuth();}
       else if(session){state.session=session;state.user=session.user;}
     });
     const {data,error}=await state.sb.auth.getSession();
-    if(error){showAuth(error.message,true);return;}
+    if(error){
+      if(isStaleRefreshTokenError(error)){
+        await clearLocalAuthSession();
+        showAuth("Your saved browser session expired or was signed out from another device. Sign in again below.",false);
+        return;
+      }
+      showAuth(friendlyAuthError(error),true);return;
+    }
+    if(state.passwordRecovery){showPasswordRecoveryForm(data.session);return;}
     if(data.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
   }
-  async function authSubmit(event){event.preventDefault();if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim(),password=$("authPassword").value;const btn=$("authSubmit");btn.disabled=true;btn.textContent="Verifying secure access…";try{const {data,error}=await state.sb.auth.signInWithPassword({email,password});if(error)throw error;state.session=data.session;state.user=data.user;await boot();}catch(error){authMessage(error.message,true);}finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}}
-  async function forgotPassword(){if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim();if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}try{const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;authMessage("Password reset instructions have been requested. Check your email.");}catch(error){authMessage(error.message,true);}}
+  async function authSubmit(event){event.preventDefault();if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim(),password=$("authPassword").value;const btn=$("authSubmit");btn.disabled=true;btn.textContent="Verifying secure access…";authMessage("");try{const {data,error}=await state.sb.auth.signInWithPassword({email,password});if(error)throw error;if(!data?.session||!data?.user)throw new Error("Supabase did not return a signed-in session. Please try again.");state.session=data.session;state.user=data.user;await boot();}catch(error){authMessage(friendlyAuthError(error),true);}finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}}
+  async function forgotPassword(){if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim();if(!email){authMessage("Enter your account email first, then select Forgot password.",true);$("authEmail").focus();return;}const button=$("forgotPassword");button.disabled=true;try{const redirectTo=new URL(location.pathname,location.origin).toString();const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo});if(error)throw error;authMessage("If this account exists, password reset instructions have been sent. Open the email on this device and follow the link to choose a new password.",false);}catch(error){authMessage(friendlyAuthError(error),true);}finally{button.disabled=false;}}
   async function boot(){if(!state.user||state.booting)return;state.booting=true;connection(true,"Verifying Nexus access…");try{
       const sessionPayload=await edge("session",{});state.profile=sessionPayload.identity||{};
       const workspace=(sessionPayload.workspaces||[]).find(w=>w.slug===WORKSPACE_SLUG)||(sessionPayload.workspaces||[])[0];
@@ -242,8 +302,8 @@
       const inviteId=new URLSearchParams(location.search).get("invitation_id");
       if(inviteId){try{await api("invitations","accept",{invitation_id:inviteId});history.replaceState({},"",location.pathname);notify("Nexus invitation accepted.","success");}catch(error){notify(error.message,"error");}}
       await updateInboxCount();await setupRealtime();await navigate(state.role==="client"?"portal":"overview");
-    }catch(error){console.error("Nexus boot",error);connection(false,"Nexus access needs attention");showAuth(error.message,true);}finally{state.booting=false;}}
-  async function signOut(){try{await state.sb?.auth.signOut();}catch(e){notify(e.message,"error");}await clearRealtime();state.session=null;state.user=null;state.cache={};showAuth();}
+    }catch(error){console.error("Nexus boot",error);connection(false,"Nexus access needs attention");showAuth("Your account session is valid, but Nexus could not finish loading the workspace: "+friendlyAuthError(error),true);}finally{state.booting=false;}}
+  async function signOut(){try{const result=await state.sb?.auth.signOut({scope:"local"});if(result?.error)notify(result.error.message,"error");}catch(e){notify(e.message,"error");}await clearRealtime();state.session=null;state.user=null;state.passwordRecovery=false;state.cache={};showAuth("You have signed out on this browser. Other devices remain signed in.");}
   async function updateInboxCount(){const r=await safe(api("notifications","inbox.list",{limit:100,unread_only:true}));if(r.ok){const n=records(r.data);const count=n.length;const c=$("notificationCount"),t=$("topNotificationDot");c.textContent=count?count:"";t.classList.toggle("show",count>0);}}
   async function clearRealtime(){
     if(state.realtimeRefreshTimer){clearTimeout(state.realtimeRefreshTimer);state.realtimeRefreshTimer=null;}
@@ -1135,7 +1195,12 @@
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
-    $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
+    $("authForm").addEventListener("submit",authSubmit);
+    $("authSubmit").addEventListener("click",event=>{event.preventDefault();$("authForm").requestSubmit();});
+    $("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
+    $("passwordRecoveryForm").addEventListener("submit",submitPasswordRecovery);
+    $("passwordRecoverySubmit").addEventListener("click",event=>{event.preventDefault();$("passwordRecoveryForm").requestSubmit();});
+    $("cancelPasswordRecovery").onclick=async()=>{state.passwordRecovery=false;await clearLocalAuthSession();$("passwordRecoveryPanel").classList.add("hidden");$("authForm").classList.remove("hidden");$(".auth-links").classList.remove("hidden");$("authTitle").textContent="Welcome back.";$("authDescription").textContent="Sign in with your Davonium Technologies account.";showAuth("Password reset was cancelled. You can sign in below.");};
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
     $("cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});

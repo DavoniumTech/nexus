@@ -1436,3 +1436,127 @@ html.black-theme body{background:var(--bg);color:var(--text)}
 @media(max-width:380px){
   #app.ai-mode .ai-return-home{width:29px;height:29px;flex-basis:29px}
 }
+
+/* DVNM reference refinement: violet identity, calm surfaces and stronger separation */
+:root{
+  --cyan:#a68bff;
+  --cyan-2:#8767eb;
+  --blue:#7385e8;
+  --violet:#b69cff;
+  --accent-soft:rgba(166,139,255,.14);
+}
+.btn-primary{
+  background:linear-gradient(112deg,#b69cff 0%,#9677f1 52%,#765dd7 100%);
+  color:#171225;
+  box-shadow:0 8px 26px rgba(137,105,226,.23);
+}
+.btn-primary:hover{box-shadow:0 11px 32px rgba(137,105,226,.34)}
+.auth-card{
+  border-color:rgba(183,160,255,.22);
+  background:linear-gradient(150deg,rgba(29,24,43,.97),rgba(17,15,27,.98));
+  box-shadow:0 30px 90px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.045);
+}
+.auth-card .eyebrow,.auth-card .secure-mark{color:#c1aaff}
+.auth-card .field input:focus,.auth-card .field select:focus{border-color:rgba(182,156,255,.72);box-shadow:0 0 0 3px rgba(166,139,255,.13)}
+.auth-links .link-button:hover{color:#c5b0ff}
+.auth-orbit .orbit-ring{border-color:rgba(166,139,255,.24)}
+.auth-orbit .orbit-core{background:linear-gradient(145deg,#30244b,#1c1830);border-color:rgba(182,156,255,.48);box-shadow:0 0 58px rgba(153,118,236,.2)}
+.auth-proof b{color:#bba5ff}
+.password-recovery-panel{margin-top:9px;padding:18px;border:1px solid rgba(182,156,255,.2);border-radius:16px;background:rgba(166,139,255,.055)}
+.password-recovery-panel h3{margin:0 0 6px;font:750 16px Manrope;color:var(--text)}
+.password-recovery-panel>p{margin:0 0 16px;color:var(--muted);font-size:12px;line-height:1.6}
+.recovery-icon{display:grid;place-items:center;width:36px;height:36px;margin-bottom:12px;border-radius:12px;background:rgba(166,139,255,.15);color:#c7b4ff;font-size:17px}
+.recovery-cancel{justify-self:center;min-height:34px}
+.ai-os{
+  background:#100e16;
+  color:#f4f3f8;
+  --ai-violet:#a68bff;
+  --ai-violet-strong:#8b6cf0;
+  --ai-panel:#171320;
+  --ai-panel-2:#1d1828;
+  --ai-line:rgba(190,172,255,.13);
+}
+.ai-os-top,.ai-history{background:#171320;border-color:var(--ai-line)}
+.ai-os-body{grid-template-columns:280px minmax(0,1fr)}
+.ai-history-title{color:#a69bbd;border-color:var(--ai-line)}
+.ai-thread{border-color:transparent;color:#d8d1e7}
+.ai-thread:hover,.ai-thread.active{background:#27213a;border-color:rgba(182,156,255,.2)}
+.ai-thread-glyph,.ai-history-foot .ai-status-dot.ready{color:#bca8ff}
+.ai-chat-stage{background:radial-gradient(ellipse at 58% 0,rgba(166,139,255,.09),transparent 52%),#100e16}
+.ai-chat-head{background:rgba(16,14,22,.94);border-color:var(--ai-line)}
+.ai-chat-head h1{color:#f4f1fb}
+.ai-chat-head p{color:#a49bb5}
+.ai-mode-select,.ai-mode-pill{border-color:rgba(182,156,255,.2);background:#1d1828;color:#ded5f4}
+.ai-status.on{color:#81ddb9}
+.ai-messages{scrollbar-color:rgba(182,156,255,.25) transparent}
+.ai-message.user{background:#27213a;border-color:rgba(182,156,255,.2)}
+.ai-message.assistant{background:rgba(166,139,255,.035);border-color:rgba(182,156,255,.09)}
+.ai-message-head{color:#bcb1d1}
+.ai-message-content{color:#e2ddec;line-height:1.75}
+.ai-message-content a{color:#beaaff}
+.ai-welcome-mark,.ai-orb{background:radial-gradient(circle,rgba(166,139,255,.2),rgba(166,139,255,.035));border-color:rgba(182,156,255,.2);color:#c1adff}
+.ai-welcome-state h2{color:#f4f1fb}
+.ai-welcome-state>p{color:#a69db7}
+.ai-prompt-grid button{background:#181421;border-color:rgba(182,156,255,.14);color:#d6cde8}
+.ai-prompt-grid button:hover{background:#241d35;border-color:rgba(182,156,255,.38)}
+.ai-composer{
+  width:min(980px,calc(100% - 48px));
+  margin:0 auto 14px;
+  padding:12px 14px;
+  border:1px solid rgba(182,156,255,.2);
+  border-radius:18px;
+  background:rgba(25,20,36,.96);
+  box-shadow:0 12px 38px rgba(0,0,0,.2);
+}
+.ai-composer:focus-within{border-color:rgba(182,156,255,.58);box-shadow:0 0 0 3px rgba(166,139,255,.12),0 14px 42px rgba(0,0,0,.2)}
+.ai-composer textarea{min-height:54px;color:#f3effa;font-size:14px;line-height:1.6}
+.ai-composer textarea::placeholder{color:#847b99}
+.ai-composer-context,.ai-composer-bottom>span{color:#a59bb8}
+.ai-usage-strip{border-color:var(--ai-line);color:#9389a7}
+.ai-usage-strip b{color:#d5c9ec}
+.ai-return-home{border-color:rgba(182,156,255,.18);background:#211b30;color:#c7b4ff}
+.ai-return-home:hover{background:#302546;border-color:rgba(182,156,255,.42);color:#fff}
+.ai-history-toggle{color:#c2b2e7}
+.ai-thread-menu{color:#a69bb9}
+.ai-service-notice{border-color:rgba(230,178,92,.24);background:rgba(230,178,92,.06)}
+.ai-source-tags{color:#9e91b8}
+.os-kpi-ring .os-ring{stroke:rgba(182,156,255,.25)}
+.mobile-nav-item.active{color:#c2adff}
+.mobile-nav-item.active span:first-child{color:#b59cff}
+.light-theme .ai-os{
+  background:#f7f6fb;
+  color:#24222d;
+  --ai-panel:#f0eff4;
+  --ai-panel-2:#fff;
+  --ai-line:rgba(76,57,124,.12);
+}
+.light-theme .ai-os-top,.light-theme .ai-history{background:#f0eff4;border-color:var(--ai-line)}
+.light-theme .ai-thread{color:#474052}
+.light-theme .ai-thread:hover,.light-theme .ai-thread.active{background:#e6e0f3;border-color:rgba(133,103,210,.18)}
+.light-theme .ai-chat-stage{background:#fbfaff}
+.light-theme .ai-chat-head{background:rgba(251,250,255,.96);border-color:var(--ai-line)}
+.light-theme .ai-chat-head h1,.light-theme .ai-welcome-state h2{color:#24222d}
+.light-theme .ai-chat-head p,.light-theme .ai-welcome-state>p{color:#6c6678}
+.light-theme .ai-message.user{background:#eee9fa;border-color:#ddd2f6}
+.light-theme .ai-message.assistant{background:#fff;border-color:#ece8f3}
+.light-theme .ai-message-content{color:#383344}
+.light-theme .ai-prompt-grid button{background:#fff;border-color:#e6e0ef;color:#423b51}
+.light-theme .ai-composer{background:#fff;border-color:#ded6ef;box-shadow:0 8px 30px rgba(44,31,77,.08)}
+.light-theme .ai-composer textarea{color:#272334}
+.light-theme .ai-composer-context,.light-theme .ai-composer-bottom>span{color:#746d83}
+.light-theme .ai-usage-strip{color:#746d83;border-color:#e8e2f1}
+.light-theme .ai-usage-strip b{color:#40394f}
+@media(max-width:760px){
+  .password-recovery-panel{padding:15px}
+  .ai-os-body{grid-template-rows:minmax(0,1fr)}
+  #app.ai-mode .ai-history{background:#171320}
+  #app.ai-mode .ai-composer{width:calc(100% - 16px);margin:0 8px calc(8px + env(safe-area-inset-bottom));padding:9px 10px;border-radius:15px}
+  #app.ai-mode .ai-composer textarea{min-height:42px;font-size:14px}
+  #app.ai-mode .ai-chat-head{background:rgba(16,14,22,.98)}
+  .light-theme #app.ai-mode .ai-history{background:#f0eff4}
+  .light-theme #app.ai-mode .ai-chat-head{background:rgba(251,250,255,.98)}
+}
+@media(max-width:390px){
+  #app.ai-mode .ai-os-top-actions .btn{font-size:9px;padding:7px 8px}
+  #app.ai-mode .ai-os-brand small{letter-spacing:.08em}
+}

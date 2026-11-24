@@ -69,7 +69,7 @@ require("setSidebarCollapsed" in app and "expandNav" in app and 'id="expandNav"'
 require("mobile-more" in app and 'class="mobile-app-nav"' in html and ".mobile-app-nav" in css, "Mobile app navigation is missing")
 require('class="notification-bell"' in html and 'data-icon="bell"' in html, "Top navigation notification bell icon is missing")
 require("Elevated Black" not in app, "Appearance label still contains the rejected Elevated Black wording")
-require("davonium-nexus-shell-v4-20261124" in worker, "PWA shell cache must be versioned for the current release")
+require("davonium-nexus-shell-v5-20261124" in worker, "PWA shell cache must be versioned for the current release")
 
 for control in ("cookieConsent", "cookieAcceptAll", "cookieReject", "cookieCustomize", "manifest.webmanifest"):
     require(control in html, f"HTML app shell missing {control}")
