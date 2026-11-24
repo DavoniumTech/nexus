@@ -1013,6 +1013,77 @@
     });
   }
   function wire(){
+    // One early, resilient router handles every generated dashboard control.
+    // The sidebar has its own navigation handler, but all in-page buttons,
+    // cards, AI actions, finance tabs and mobile shortcuts depend on this.
+    document.addEventListener("click",event=>{
+      const target=event.target instanceof Element?event.target:event.target?.parentElement;
+      if(!target)return;
+
+      const page=target.closest("[data-page]");
+      if(page){
+        event.preventDefault();
+        void navigate(page.dataset.page);
+        return;
+      }
+
+      const mobileMore=target.closest('[data-act="mobile-more"]');
+      if(mobileMore){
+        event.preventDefault();
+        $("#sidebar")?.classList.add("open");
+        $("#mobileScrim")?.classList.add("show");
+        return;
+      }
+
+      const modalAct=target.closest("[data-modal-act]");
+      if(modalAct){
+        event.preventDefault();
+        const action=modalAct.dataset.modalAct;
+        const id=modalAct.dataset.id;
+        const projectId=modalAct.dataset.project;
+        void closeModal().then(()=>dispatchAction(action,id,{projectId}));
+        return;
+      }
+
+      const action=target.closest("[data-act]");
+      if(action){
+        event.preventDefault();
+        if(action.dataset.act==="ai-manage-conversation"){
+          manageAIConversation(action.dataset.id);
+          return;
+        }
+        if(action.dataset.act==="ai-toggle-history"){
+          const history=$(".ai-history");
+          history?.classList.toggle("open");
+          $("#aiHistoryBackdrop")?.classList.toggle("visible",history?.classList.contains("open")===true);
+          return;
+        }
+        if(action.dataset.act==="ai-close-history"){
+          $(".ai-history")?.classList.remove("open");
+          $("#aiHistoryBackdrop")?.classList.remove("visible");
+          return;
+        }
+        dispatchAction(action.dataset.act,action.dataset.id,{projectId:action.dataset.project});
+        return;
+      }
+
+      const accent=target.closest("[data-accent-theme]");
+      if(accent){
+        event.preventDefault();
+        state.accentTheme=accent.dataset.accentTheme;
+        applyAccentTheme();
+        if(state.currentPage==="settings")void renderSettings();
+        return;
+      }
+
+      const tab=target.closest("[data-finance-tab]");
+      if(tab&&$("#pageContent")?.contains(tab)){
+        event.preventDefault();
+        state.financeTab=tab.dataset.financeTab;
+        void renderFinance();
+      }
+    });
+
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     const bindPageNavigation=root=>root?.addEventListener("click",event=>{
       const item=event.target.closest("[data-page]");
@@ -1079,13 +1150,7 @@
     $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");};
     $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
     $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
-    document.addEventListener("click",e=>{
-      const accent=e.target.closest("[data-accent-theme]");if(accent){state.accentTheme=accent.dataset.accentTheme;applyAccentTheme();if(state.currentPage==="settings")void renderSettings();return;}
-      const ft=e.target.closest("[data-finance-tab]");if(ft){state.financeTab=ft.dataset.financeTab;void renderFinance();return;}
-      const page=e.target.closest("[data-page]");if(page){e.preventDefault();navigate(page.dataset.page);return;}
-      const modalAct=e.target.closest("[data-modal-act]");if(modalAct){const a=modalAct.dataset.modalAct,id=modalAct.dataset.id,projectId=modalAct.dataset.project;closeModal();dispatchAction(a,id,{projectId});return;}
-      const action=e.target.closest("[data-act]");if(action){e.preventDefault();dispatchAction(action.dataset.act,action.dataset.id,{projectId:action.dataset.project});}
-    });
+
     document.addEventListener("keydown",e=>{if(e.target?.id==="aiMessageInput"&&e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#aiComposer")?.requestSubmit();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();if($("commandBackdrop").classList.contains("hidden"))showCommand();else hideCommand();}else if(e.key==="Escape"){hideCommand();if(!$ ("modalBackdrop").classList.contains("hidden"))closeModal();}else if(e.key==="/"&&!/input|textarea|select/i.test(document.activeElement?.tagName||"")){e.preventDefault();showCommand();}});
   }
 
