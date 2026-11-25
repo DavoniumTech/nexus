@@ -320,6 +320,15 @@ async function main(){
   await loginPage.waitForSelector(".ai-os", { state: "visible" });
   assert.notEqual(await loginPage.locator(".mobile-app-nav").evaluate(el => getComputedStyle(el).display), "none",
     "Phone navigation must stay available while DVNM Intelligence is open");
+  await loginPage.locator('.mobile-nav-item[data-act="mobile-more"]').click();
+  await loginPage.waitForFunction(() => document.querySelector("#sidebar")?.classList.contains("open") &&
+    !document.querySelector("#app")?.classList.contains("ai-mode"));
+  assert.ok(await loginPage.locator('#sidebar [data-page="tasks"]').isVisible(),
+    "The More drawer must expose the full page navigation from inside DVNM Intelligence");
+  await loginPage.locator('#sidebar [data-page="tasks"]').click();
+  await loginPage.waitForFunction(() => document.querySelector("#pageCrumb")?.textContent === "Tasks");
+  await loginPage.locator('.mobile-nav-item[data-page="intelligence"]').click();
+  await loginPage.waitForSelector(".ai-os", { state: "visible" });
   await loginPage.locator('.mobile-nav-item[data-page="overview"]').click();
   await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
   await loginPage.setViewportSize({ width: 1440, height: 900 });
