@@ -62,7 +62,10 @@ async function main(){
           return { auth: {
             onAuthStateChange: function () { return { data: { subscription: { unsubscribe: function () {} } } }; },
             getSession: async function () { return { data: { session: null }, error: null }; },
-            signInWithPassword: async function () { return { data: { session: null, user: null }, error: { message: "Invalid login credentials" } }; },
+            signInWithPassword: async function () {
+              window.__nexusSmokeSignInCalled = true;
+              return { data: { session: null, user: null }, error: { message: "Invalid login credentials" } };
+            },
             resetPasswordForEmail: async function () { return { error: null }; }
           } };
         }
@@ -98,9 +101,24 @@ async function main(){
   await authPage.locator("#authEmail").fill("owner@example.test");
   await authPage.locator("#authPassword").fill("smoke-test-password");
   await authPage.locator("#authSubmit").click();
-  await authPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("Invalid login credentials"));
-  assert.ok(await authPage.locator("#authMessage").isVisible(),
-    "The sign-in form must respond after the delayed Supabase library becomes available");
+  await authPage.waitForTimeout(350);
+  const signInDiagnostic = await authPage.evaluate(() => ({
+    authMessage: document.querySelector("#authMessage")?.textContent,
+    authMessageClass: document.querySelector("#authMessage")?.className,
+    submitButton: document.querySelector("#authSubmit")?.textContent,
+    submitDisabled: document.querySelector("#authSubmit")?.disabled,
+    libraryReady: typeof window.supabase?.createClient === "function",
+    libraryPromise: typeof window.__nexusSupabaseReady
+  }));
+  console.log("NEXUS_AUTH_SUBMIT_DIAGNOSTIC", JSON.stringify({
+    ...signInDiagnostic,
+    providerSignInCalled: await authPage.evaluate(() => window.__nexusSmokeSignInCalled === true),
+    browserErrors: errors
+  }));
+  assert.equal(await authPage.evaluate(() => window.__nexusSmokeSignInCalled === true), true,
+    "The sign-in form must call Supabase signInWithPassword after the provider library becomes available");
+  assert.ok((signInDiagnostic.authMessage||"").includes("Invalid login credentials"),
+    "The sign-in form must display the Supabase authentication response");
   await authPage.locator("#forgotPassword").click();
   await authPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("Password reset instructions"));
   await authContext.close();
