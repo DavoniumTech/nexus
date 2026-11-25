@@ -50,6 +50,7 @@ async function main(){
   const authContext = await browser.newContext({ viewport: { width: 1280, height: 850 }, serviceWorkers: "block" });
   const authPage = await authContext.newPage();
   authPage.on("pageerror", error => errors.push("sign-in: " + error.message));
+  authPage.on("console", message => { if (message.type() === "error") errors.push("sign-in console: " + message.text()); });
   await authPage.route("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", route => route.abort());
   await authPage.route("https://unpkg.com/@supabase/supabase-js@2", async route => {
     await new Promise(resolve => setTimeout(resolve, 1200));
@@ -70,8 +71,25 @@ async function main(){
   });
   await authPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
   await authPage.waitForSelector("#authForm");
+  const beforeConnectionClick = await authPage.evaluate(() => ({
+    readyState: document.readyState,
+    appScript: [...document.scripts].some(script => script.src.endsWith("/app.js")),
+    setupHandler: typeof document.querySelector("#openSetupAuth")?.onclick,
+    signInHandler: typeof document.querySelector("#authForm")?.onsubmit,
+    setupVisible: !!document.querySelector("#openSetupAuth") && getComputedStyle(document.querySelector("#openSetupAuth")).pointerEvents
+  }));
+  console.log("NEXUS_AUTH_BOOT_DIAGNOSTIC", JSON.stringify({ beforeConnectionClick, browserErrors: errors }));
+  assert.equal(beforeConnectionClick.setupHandler, "function",
+    "Connection settings must have a working click handler before the Supabase library loads");
   await authPage.locator("#openSetupAuth").click();
-  await authPage.waitForSelector("#modalBackdrop:not(.hidden)");
+  await authPage.waitForTimeout(100);
+  const afterConnectionClick = await authPage.evaluate(() => ({
+    modalClass: document.querySelector("#modalBackdrop")?.className,
+    modalTitle: document.querySelector("#modalTitle")?.textContent,
+    setupHandler: typeof document.querySelector("#openSetupAuth")?.onclick
+  }));
+  console.log("NEXUS_AUTH_CLICK_DIAGNOSTIC", JSON.stringify({ afterConnectionClick, browserErrors: errors }));
+  await authPage.waitForSelector("#modalBackdrop:not(.hidden)", { timeout: 3000 });
   assert.ok((await authPage.locator("#modalTitle").textContent()).includes("Secure Supabase connection"),
     "Connection settings must open while the external Supabase library is still loading");
   await authPage.locator("#closeModal").click();
