@@ -123,7 +123,14 @@
     const key=url===DEFAULT_URL?DEFAULT_PUBLISHABLE_KEY:savedKey;
     return {url,key};
   }
-  function connectedClient(){ const c=cfg(); if(!window.supabase||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
+  async function waitForSupabaseLibrary(){
+    if(window.supabase?.createClient)return true;
+    const ready=window.__nexusSupabaseReady;
+    if(!ready)return false;
+    try{return (await ready)===true&&typeof window.supabase?.createClient==="function";}
+    catch(error){console.error("Nexus Supabase library",error);return false;}
+  }
+  function connectedClient(){ const c=cfg(); if(!window.supabase?.createClient||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
   function notify(message,type="info"){ const host=$("toastRegion"); const el=document.createElement("div");el.className="toast"+(type==="error"?" error":type==="success"?" success":"");el.textContent=message;host.appendChild(el);setTimeout(()=>el.remove(),4300); }
   function connection(ok,message){ $("connectionText").textContent=message|| (ok?"Connected securely":"Connection issue"); $("sidebarStatusDot").className="status-dot"+(ok?"": " bad"); }
   function authMessage(message,bad=false){ const el=$("authMessage");el.textContent=message;el.className="notice"+(bad?" error":""); }
@@ -220,7 +227,12 @@
   }
   async function restore(){
     applyTheme();
-    if(!connectedClient()){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
+    if(!(await waitForSupabaseLibrary())){
+      showAuth("Nexus loaded, but the secure sign-in library could not be reached. Check your internet connection and refresh the page.",true);
+      return;
+    }
+    if(!cfg().key){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
+    if(!connectedClient()){showAuth("Nexus could not initialise the secure Supabase connection. Check Connection settings.",true);openSetup(true);return;}
     state.sb.auth.onAuthStateChange((event,session)=>{
       if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;showAuth();}
       else if(session){state.session=session;state.user=session.user;}
@@ -242,8 +254,35 @@
     }
     if(data?.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
   }
-  async function authSubmit(event){event.preventDefault();if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim(),password=$("authPassword").value;const btn=$("authSubmit");btn.disabled=true;btn.textContent="Verifying secure access…";try{const {data,error}=await state.sb.auth.signInWithPassword({email,password});if(error)throw error;state.session=data.session;state.user=data.user;await boot();}catch(error){authMessage(error.message,true);}finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}}
-  async function forgotPassword(){if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim();if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}try{const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;authMessage("Password reset instructions have been requested. Check your email.");}catch(error){authMessage(error.message,true);}}
+  async function authSubmit(event){
+    event.preventDefault();
+    const btn=$("authSubmit"),email=$("authEmail").value.trim(),password=$("authPassword").value;
+    btn.disabled=true;btn.textContent="Connecting securely…";
+    try{
+      if(!state.sb){
+        if(!(await waitForSupabaseLibrary()))throw new Error("The secure sign-in library is unavailable. Check your internet connection and refresh Nexus.");
+        if(!connectedClient())throw new Error("The Supabase connection could not be initialised. Open Connection settings and verify the project key.");
+      }
+      btn.textContent="Verifying secure access…";
+      const {data,error}=await state.sb.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      state.session=data.session;state.user=data.user;await boot();
+    }catch(error){authMessage(error.message,true);}
+    finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}
+  }
+  async function forgotPassword(){
+    const email=$("authEmail").value.trim();
+    if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}
+    try{
+      if(!state.sb){
+        if(!(await waitForSupabaseLibrary()))throw new Error("The secure sign-in library is unavailable. Check your internet connection and refresh Nexus.");
+        if(!connectedClient())throw new Error("The Supabase connection could not be initialised. Open Connection settings.");
+      }
+      const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+      if(error)throw error;
+      authMessage("Password reset instructions have been requested. Check your email.");
+    }catch(error){authMessage(error.message,true);}
+  }
   async function boot(){if(!state.user||state.booting)return;state.booting=true;connection(true,"Verifying Nexus access…");try{
       const sessionPayload=await edge("session",{});state.profile=sessionPayload.identity||{};
       const workspace=(sessionPayload.workspaces||[]).find(w=>w.slug===WORKSPACE_SLUG)||(sessionPayload.workspaces||[])[0];
@@ -975,7 +1014,7 @@
       const url=v.url.trim().replace(/\/$/,"");if(!/^https:\/\/[a-z0-9.-]+\.supabase\.co$/i.test(url))throw new Error("Enter the HTTPS URL of your Supabase project.");if(v.key.length<20)throw new Error("The publishable/anon key appears too short.");
       const keyText=v.key;try{const parsed=JSON.parse(atob(keyText.split(".")[1]||""));if(parsed.role==="service_role")throw new Error("A service-role key cannot be used in the browser. Use the publishable/anon key.");}catch(e){if(e.message?.includes("service-role"))throw e;}
       if(v.remember){localStorage.setItem("nexus_url",url);localStorage.setItem("nexus_publishable_key",keyText);sessionStorage.removeItem("nexus_url");sessionStorage.removeItem("nexus_publishable_key");}else{localStorage.removeItem("nexus_url");localStorage.removeItem("nexus_publishable_key");sessionStorage.setItem("nexus_url",url);sessionStorage.setItem("nexus_publishable_key",keyText);}
-      localStorage.removeItem("nexus_anon");await closeModal();state.sb=null;const ok=connectedClient();if(!ok)throw new Error("Could not initialise Supabase. Check the project URL and publishable key.");const {data,error}=await state.sb.auth.getSession();if(error)throw error;if(data.session){state.session=data.session;state.user=data.session.user;state.booting=false;await boot();}else{showAuth("Connection saved. Sign in with your existing authorised Nexus account.");notify("Supabase connection saved in this browser.","success");}
+      localStorage.removeItem("nexus_anon");await closeModal();state.sb=null;if(!(await waitForSupabaseLibrary()))throw new Error("The secure Supabase library is unavailable. Check your internet connection, then retry.");const ok=connectedClient();if(!ok)throw new Error("Could not initialise Supabase. Check the project URL and publishable key.");const {data,error}=await state.sb.auth.getSession();if(error)throw error;if(data.session){state.session=data.session;state.user=data.session.user;state.booting=false;await boot();}else{showAuth("Connection saved. Sign in with your existing authorised Nexus account.");notify("Supabase connection saved in this browser.","success");}
     }});
     if(focusAuth)setTimeout(()=>$ ("field-url")?.focus(),0);
   }
