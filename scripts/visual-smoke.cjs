@@ -94,6 +94,7 @@ async function main(){
   assert.ok((await authPage.locator("#modalTitle").textContent()).includes("Secure Supabase connection"),
     "Connection settings must open while the external Supabase library is still loading");
   await authPage.locator("#closeModal").click();
+  await authPage.locator("#modalBackdrop").waitFor({ state: "hidden" });
   await authPage.locator("#authEmail").fill("owner@example.test");
   await authPage.locator("#authPassword").fill("smoke-test-password");
   await authPage.locator("#authSubmit").click();
