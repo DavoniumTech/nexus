@@ -46,6 +46,90 @@ async function main(){
    await page.close();
   }
 
+  // Verify the sign-in controls stay interactive while the Supabase CDN is delayed.
+  const authContext = await browser.newContext({ viewport: { width: 1280, height: 850 }, serviceWorkers: "block" });
+  const authPage = await authContext.newPage();
+  authPage.on("pageerror", error => errors.push("sign-in: " + error.message));
+  authPage.on("console", message => {
+    if(message.type()!=="error")return;
+    // The test intentionally aborts jsDelivr to exercise the fallback CDN.
+    // Ignore only the resulting expected resource-load warning; real page errors remain fatal.
+    if(message.text()==="Failed to load resource: net::ERR_FAILED")return;
+    errors.push("sign-in console: " + message.text());
+  });
+  await authPage.route("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", route => route.abort());
+  await authPage.route("https://unpkg.com/@supabase/supabase-js@2", async route => {
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: `window.supabase = {
+        createClient: function () {
+          return { auth: {
+            onAuthStateChange: function () { return { data: { subscription: { unsubscribe: function () {} } } }; },
+            getSession: async function () { return { data: { session: null }, error: null }; },
+            signInWithPassword: async function () {
+              window.__nexusSmokeSignInCalled = true;
+              return { data: { session: null, user: null }, error: { message: "Invalid login credentials" } };
+            },
+            resetPasswordForEmail: async function () { return { error: null }; }
+          } };
+        }
+      };`
+    });
+  });
+  await authPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
+  await authPage.waitForSelector("#authForm");
+  const beforeConnectionClick = await authPage.evaluate(() => ({
+    readyState: document.readyState,
+    appScript: [...document.scripts].some(script => script.src.endsWith("/app.js")),
+    uiBooted: window.__nexusUiBooted===true,
+    wireError: window.__nexusWireError||null,
+    signInFormPresent: !!document.querySelector("#authForm"),
+    setupVisible: !!document.querySelector("#openSetupAuth") && getComputedStyle(document.querySelector("#openSetupAuth")).pointerEvents
+  }));
+  console.log("NEXUS_AUTH_BOOT_DIAGNOSTIC", JSON.stringify({ beforeConnectionClick, browserErrors: errors }));
+  assert.equal(beforeConnectionClick.uiBooted, true,
+    "Nexus UI event routing must initialise before the Supabase library loads");
+  await authPage.locator("#openSetupAuth").click();
+  await authPage.waitForTimeout(100);
+  const afterConnectionClick = await authPage.evaluate(() => ({
+    modalClass: document.querySelector("#modalBackdrop")?.className,
+    modalTitle: document.querySelector("#modalTitle")?.textContent,
+    setupHandler: typeof document.querySelector("#openSetupAuth")?.onclick
+  }));
+  console.log("NEXUS_AUTH_CLICK_DIAGNOSTIC", JSON.stringify({ afterConnectionClick, browserErrors: errors }));
+  await authPage.waitForSelector("#modalBackdrop:not(.hidden)", { timeout: 3000 });
+  assert.ok((await authPage.locator("#modalTitle").textContent()).includes("Secure Supabase connection"),
+    "Connection settings must open while the external Supabase library is still loading");
+  await authPage.locator("#closeModal").click();
+  await authPage.locator("#modalBackdrop").waitFor({ state: "hidden" });
+  await authPage.locator("#authEmail").fill("owner@example.test");
+  await authPage.locator("#authPassword").fill("smoke-test-password");
+  await authPage.locator("#authSubmit").click();
+  await authPage.waitForFunction(() => window.__nexusSmokeSignInCalled === true ||
+    (document.querySelector("#authMessage")?.textContent||"").length>0, null, { timeout: 5000 });
+  const signInDiagnostic = await authPage.evaluate(() => ({
+    authMessage: document.querySelector("#authMessage")?.textContent,
+    authMessageClass: document.querySelector("#authMessage")?.className,
+    submitButton: document.querySelector("#authSubmit")?.textContent,
+    submitDisabled: document.querySelector("#authSubmit")?.disabled,
+    libraryReady: typeof window.supabase?.createClient === "function",
+    libraryPromise: typeof window.__nexusSupabaseReady
+  }));
+  console.log("NEXUS_AUTH_SUBMIT_DIAGNOSTIC", JSON.stringify({
+    ...signInDiagnostic,
+    providerSignInCalled: await authPage.evaluate(() => window.__nexusSmokeSignInCalled === true),
+    browserErrors: errors
+  }));
+  assert.equal(await authPage.evaluate(() => window.__nexusSmokeSignInCalled === true), true,
+    "The sign-in form must call Supabase signInWithPassword after the provider library becomes available");
+  assert.ok((signInDiagnostic.authMessage||"").includes("Invalid login credentials"),
+    "The sign-in form must display the Supabase authentication response");
+  await authPage.locator("#forgotPassword").click();
+  await authPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("Password reset instructions"));
+  await authContext.close();
+
   // Simulate the production sign-in and authenticated company boot with isolated test data.
   const loginContext = await browser.newContext({
     viewport: { width: 1440, height: 900 },

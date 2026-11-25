@@ -123,7 +123,14 @@
     const key=url===DEFAULT_URL?DEFAULT_PUBLISHABLE_KEY:savedKey;
     return {url,key};
   }
-  function connectedClient(){ const c=cfg(); if(!window.supabase||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
+  async function waitForSupabaseLibrary(){
+    if(window.supabase?.createClient)return true;
+    const ready=window.__nexusSupabaseReady;
+    if(!ready)return false;
+    try{return (await ready)===true&&typeof window.supabase?.createClient==="function";}
+    catch(error){console.error("Nexus Supabase library",error);return false;}
+  }
+  function connectedClient(){ const c=cfg(); if(!window.supabase?.createClient||!c.key) return false; try { state.sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}}); return true; } catch(err){ console.error(err); return false; } }
   function notify(message,type="info"){ const host=$("toastRegion"); const el=document.createElement("div");el.className="toast"+(type==="error"?" error":type==="success"?" success":"");el.textContent=message;host.appendChild(el);setTimeout(()=>el.remove(),4300); }
   function connection(ok,message){ $("connectionText").textContent=message|| (ok?"Connected securely":"Connection issue"); $("sidebarStatusDot").className="status-dot"+(ok?"": " bad"); }
   function authMessage(message,bad=false){ const el=$("authMessage");el.textContent=message;el.className="notice"+(bad?" error":""); }
@@ -220,7 +227,12 @@
   }
   async function restore(){
     applyTheme();
-    if(!connectedClient()){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
+    if(!(await waitForSupabaseLibrary())){
+      showAuth("Nexus loaded, but the secure sign-in library could not be reached. Check your internet connection and refresh the page.",true);
+      return;
+    }
+    if(!cfg().key){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
+    if(!connectedClient()){showAuth("Nexus could not initialise the secure Supabase connection. Check Connection settings.",true);openSetup(true);return;}
     state.sb.auth.onAuthStateChange((event,session)=>{
       if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;showAuth();}
       else if(session){state.session=session;state.user=session.user;}
@@ -242,8 +254,35 @@
     }
     if(data?.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
   }
-  async function authSubmit(event){event.preventDefault();if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim(),password=$("authPassword").value;const btn=$("authSubmit");btn.disabled=true;btn.textContent="Verifying secure access…";try{const {data,error}=await state.sb.auth.signInWithPassword({email,password});if(error)throw error;state.session=data.session;state.user=data.user;await boot();}catch(error){authMessage(error.message,true);}finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}}
-  async function forgotPassword(){if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim();if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}try{const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;authMessage("Password reset instructions have been requested. Check your email.");}catch(error){authMessage(error.message,true);}}
+  async function authSubmit(event){
+    event.preventDefault();
+    const btn=$("authSubmit"),email=$("authEmail").value.trim(),password=$("authPassword").value;
+    btn.disabled=true;btn.textContent="Connecting securely…";
+    try{
+      if(!state.sb){
+        if(!(await waitForSupabaseLibrary()))throw new Error("The secure sign-in library is unavailable. Check your internet connection and refresh Nexus.");
+        if(!connectedClient())throw new Error("The Supabase connection could not be initialised. Open Connection settings and verify the project key.");
+      }
+      btn.textContent="Verifying secure access…";
+      const {data,error}=await state.sb.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      state.session=data.session;state.user=data.user;await boot();
+    }catch(error){authMessage(error.message,true);}
+    finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}
+  }
+  async function forgotPassword(){
+    const email=$("authEmail").value.trim();
+    if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}
+    try{
+      if(!state.sb){
+        if(!(await waitForSupabaseLibrary()))throw new Error("The secure sign-in library is unavailable. Check your internet connection and refresh Nexus.");
+        if(!connectedClient())throw new Error("The Supabase connection could not be initialised. Open Connection settings.");
+      }
+      const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+      if(error)throw error;
+      authMessage("Password reset instructions have been requested. Check your email.");
+    }catch(error){authMessage(error.message,true);}
+  }
   async function boot(){if(!state.user||state.booting)return;state.booting=true;connection(true,"Verifying Nexus access…");try{
       const sessionPayload=await edge("session",{});state.profile=sessionPayload.identity||{};
       const workspace=(sessionPayload.workspaces||[]).find(w=>w.slug===WORKSPACE_SLUG)||(sessionPayload.workspaces||[])[0];
@@ -975,7 +1014,7 @@
       const url=v.url.trim().replace(/\/$/,"");if(!/^https:\/\/[a-z0-9.-]+\.supabase\.co$/i.test(url))throw new Error("Enter the HTTPS URL of your Supabase project.");if(v.key.length<20)throw new Error("The publishable/anon key appears too short.");
       const keyText=v.key;try{const parsed=JSON.parse(atob(keyText.split(".")[1]||""));if(parsed.role==="service_role")throw new Error("A service-role key cannot be used in the browser. Use the publishable/anon key.");}catch(e){if(e.message?.includes("service-role"))throw e;}
       if(v.remember){localStorage.setItem("nexus_url",url);localStorage.setItem("nexus_publishable_key",keyText);sessionStorage.removeItem("nexus_url");sessionStorage.removeItem("nexus_publishable_key");}else{localStorage.removeItem("nexus_url");localStorage.removeItem("nexus_publishable_key");sessionStorage.setItem("nexus_url",url);sessionStorage.setItem("nexus_publishable_key",keyText);}
-      localStorage.removeItem("nexus_anon");await closeModal();state.sb=null;const ok=connectedClient();if(!ok)throw new Error("Could not initialise Supabase. Check the project URL and publishable key.");const {data,error}=await state.sb.auth.getSession();if(error)throw error;if(data.session){state.session=data.session;state.user=data.session.user;state.booting=false;await boot();}else{showAuth("Connection saved. Sign in with your existing authorised Nexus account.");notify("Supabase connection saved in this browser.","success");}
+      localStorage.removeItem("nexus_anon");await closeModal();state.sb=null;if(!(await waitForSupabaseLibrary()))throw new Error("The secure Supabase library is unavailable. Check your internet connection, then retry.");const ok=connectedClient();if(!ok)throw new Error("Could not initialise Supabase. Check the project URL and publishable key.");const {data,error}=await state.sb.auth.getSession();if(error)throw error;if(data.session){state.session=data.session;state.user=data.session.user;state.booting=false;await boot();}else{showAuth("Connection saved. Sign in with your existing authorised Nexus account.");notify("Supabase connection saved in this browser.","success");}
     }});
     if(focusAuth)setTimeout(()=>$ ("field-url")?.focus(),0);
   }
@@ -1086,9 +1125,22 @@
   function wire(){
     // One capture-phase router owns every generated navigation and action control.
     // It handles nested SVG targets and prevents duplicate delegated handlers.
+    // Install the sign-in submit handler before any optional UI initialisation.
+    document.addEventListener("submit",event=>{
+      if(event.target?.id==="authForm"){event.preventDefault();void authSubmit(event);}
+    },true);
     document.addEventListener("click",event=>{
       const target=event.target instanceof Element?event.target:event.target?.parentElement;
       if(!target)return;
+      if(target.id==="modalBackdrop"&&event.target===target){event.preventDefault();event.stopPropagation();void closeModal();return;}
+      if(target.id==="commandBackdrop"&&event.target===target){event.preventDefault();event.stopPropagation();hideCommand();return;}
+      // Authentication controls use this same capture-phase router as the rest of Nexus.
+      if(target.closest("#openSetupAuth")){
+        event.preventDefault();event.stopPropagation();openSetup(true);return;
+      }
+      if(target.closest("#forgotPassword")){
+        event.preventDefault();event.stopPropagation();void forgotPassword();return;
+      }
       const financeTab=target.closest("[data-finance-tab]");
       if(financeTab&&$("#pageContent")?.contains(financeTab)){
         event.preventDefault();event.stopPropagation();
@@ -1126,6 +1178,14 @@
         if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
         if(act==="privacy-customize"){openPrivacySettings();return;}
         if(act==="sign-out"){void signOut();return;}
+        if(act==="sign-in"){void authSubmit({preventDefault(){}});return;}
+        if(act==="theme-toggle"){cycleTheme();return;}
+        if(act==="open-command"){showCommand();return;}
+        if(act==="notifications-open"){void navigate("notifications");return;}
+        if(act==="settings-open"){void navigate("settings");return;}
+        if(act==="mobile-menu-open"){$("#sidebar").classList.toggle("open");$("#mobileScrim").classList.toggle("show");return;}
+        if(act==="mobile-menu-close"){$("#sidebar").classList.remove("open");$("#mobileScrim").classList.remove("show");if(state.currentPage==="intelligence")$("#app").classList.add("ai-mode");return;}
+        if(act==="close-modal"){void closeModal();return;}
         if(act==="ai-send"){void sendAIMessage();return;}
         if(act==="modal-submit"){$("nexusDynamicForm")?.requestSubmit();return;}
         if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
@@ -1157,7 +1217,6 @@
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
-    $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
     $("cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});
@@ -1167,13 +1226,21 @@
     if(!navigator.onLine)document.body.classList.add("is-offline");
     window.addEventListener("appinstalled",()=>trackEvent("pwa_installed"));
     if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(err=>console.warn("Nexus offline shell",err)));
-    $("openCommand").onclick=showCommand;$("topNotifications").onclick=()=>navigate("notifications");$("profileButton").onclick=()=>navigate("settings");$("workspaceSwitch").onclick=()=>navigate("settings");$("connectionDetails").onclick=()=>navigate("settings");
-    $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");if(state.currentPage==="intelligence")$("app").classList.add("ai-mode");};
-    $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
-    $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
+    $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));
+    $("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
 
     document.addEventListener("keydown",e=>{if(e.target?.id==="aiMessageInput"&&e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#aiComposer")?.requestSubmit();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();if($("commandBackdrop").classList.contains("hidden"))showCommand();else hideCommand();}else if(e.key==="Escape"){hideCommand();if(!$ ("modalBackdrop").classList.contains("hidden"))closeModal();}else if(e.key==="/"&&!/input|textarea|select/i.test(document.activeElement?.tagName||"")){e.preventDefault();showCommand();}});
   }
 
-  document.addEventListener("DOMContentLoaded",()=>{wire();restore();});
+  document.addEventListener("DOMContentLoaded",()=>{
+    try{
+      wire();
+      window.__nexusUiBooted=true;
+    }catch(error){
+      window.__nexusWireError=error instanceof Error?error.message:String(error);
+      console.error("Nexus interface initialisation failed",error);
+      try{authMessage("Nexus controls could not initialise: "+window.__nexusWireError,true);}catch(_){}
+    }
+    void restore();
+  });
 })();

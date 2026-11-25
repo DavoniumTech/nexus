@@ -16,7 +16,44 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Load Supabase without blocking the Nexus interface. The app's controls must remain
+    // responsive even when a third-party CDN is slow or unavailable.
+    (() => {
+      let resolveReady;
+      window.__nexusSupabaseReady = new Promise(resolve => { resolveReady = resolve; });
+      const sources = [
+        "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+        "https://unpkg.com/@supabase/supabase-js@2"
+      ];
+      const load = index => {
+        if (window.supabase?.createClient) { resolveReady(true); return; }
+        if (index >= sources.length) { resolveReady(false); return; }
+        const script = document.createElement("script");
+        script.src = sources[index];
+        script.async = true;
+        let settled = false;
+        const retry = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          script.remove();
+          load(index + 1);
+        };
+        const timeout = setTimeout(retry, 8000);
+        script.onload = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (window.supabase?.createClient) resolveReady(true);
+          else load(index + 1);
+        };
+        script.onerror = retry;
+        document.head.appendChild(script);
+      };
+      load(0);
+    })();
+  </script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="ambient-glow glow-one"></div><div class="ambient-glow glow-two"></div><div class="starfield"></div></div>
@@ -38,7 +75,7 @@
         <form id="authForm" class="form-stack">
           <label class="field">Email address<input id="authEmail" type="email" autocomplete="username" required placeholder="you@davoniumtech.com"></label>
           <label class="field">Password<input id="authPassword" type="password" autocomplete="current-password" required placeholder="Your password"><span class="field-note">Use the password linked to your invited account.</span></label>
-          <button class="btn btn-primary btn-full" id="authSubmit" type="submit">Sign in to Nexus <span>↗</span></button>
+          <button class="btn btn-primary btn-full" id="authSubmit" type="submit" data-act="sign-in">Sign in to Nexus <span>↗</span></button>
         </form>
         <div class="auth-links"><button class="link-button" id="forgotPassword">Forgot password?</button><button class="link-button" id="openSetupAuth">Connection settings</button></div>
         <div id="authMessage" class="notice hidden" role="status"></div>
@@ -49,10 +86,10 @@
   </section>
 
   <div id="app" class="app hidden">
-    <div class="mobile-scrim" id="mobileScrim"></div>
+    <div class="mobile-scrim" id="mobileScrim" data-act="mobile-menu-close"></div>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand"><div class="brand-mark small brand-mark-image"><img src="./assets/branding/davonium-d-icon.webp" alt="" width="35" height="35"></div><div class="brand-word"><strong>DAVONIUM</strong><small><img class="nexus-product-mark" src="./assets/branding/davonium-nexus.svg" alt=""> NEXUS OS</small></div><button class="icon-button sidebar-collapse" id="collapseNav" data-act="toggle-sidebar" aria-label="Toggle sidebar">‹</button></div>
-      <button class="workspace-switch" id="workspaceSwitch"><span class="workspace-monogram">DT</span><span class="workspace-meta"><b id="workspaceName">Davonium Technologies</b><small>Company organisation</small></span><span class="chevron">⌄</span></button>
+      <button class="workspace-switch" id="workspaceSwitch" data-act="settings-open"><span class="workspace-monogram">DT</span><span class="workspace-meta"><b id="workspaceName">Davonium Technologies</b><small>Company organisation</small></span><span class="chevron">⌄</span></button>
       <div class="sidebar-scroll">
         <nav class="nav-groups" id="nav">
           <div class="nav-label">NEXUS</div>
@@ -82,15 +119,15 @@
         </nav>
       </div>
       <div class="sidebar-bottom">
-        <div class="sidebar-health"><span class="status-dot" id="sidebarStatusDot"></span><span id="connectionText">Connecting securely…</span><button class="icon-button tiny" id="connectionDetails" aria-label="Connection details">↗</button></div>
+        <div class="sidebar-health"><span class="status-dot" id="sidebarStatusDot"></span><span id="connectionText">Connecting securely…</span><button class="icon-button tiny" id="connectionDetails" data-act="settings-open" aria-label="Connection details">↗</button></div>
         <div class="user-card"><div class="avatar" id="userAvatar">D</div><div class="user-meta"><b id="userName">Nexus member</b><small id="userRole">Member</small></div><button type="button" class="icon-button tiny" id="signOut" data-act="sign-out" title="Sign out" aria-label="Sign out">⇥</button></div>
       </div>
     </aside>
 
     <main class="main-shell">
       <header class="topbar">
-        <div class="topbar-left"><button class="icon-button desktop-expand-nav hidden" id="expandNav" data-act="expand-sidebar" aria-label="Expand sidebar" title="Expand navigation">›</button><button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button><div class="breadcrumbs"><span>Davonium Technologies</span><b>/</b><strong id="pageCrumb">Nexus Overview</strong></div></div>
-        <div class="topbar-actions"><button class="global-search" id="openCommand"><span class="search-glyph" data-icon="search"></span><span>Search Nexus…</span><kbd>Ctrl K</kbd></button><button class="icon-button" id="themeToggle" title="Appearance: system. Select next theme." aria-label="Appearance: system. Select next theme.">◐</button><button class="icon-button notification-trigger" id="topNotifications" aria-label="Open inbox" title="Notifications"><span class="notification-bell" data-icon="bell"></span><i id="topNotificationDot"></i></button><span class="top-divider"></span><button class="top-avatar" id="profileButton" aria-label="Account profile">D</button></div>
+        <div class="topbar-left"><button class="icon-button desktop-expand-nav hidden" id="expandNav" data-act="expand-sidebar" aria-label="Expand sidebar" title="Expand navigation">›</button><button class="icon-button mobile-menu" id="mobileMenu" data-act="mobile-menu-open" aria-label="Open navigation">☰</button><div class="breadcrumbs"><span>Davonium Technologies</span><b>/</b><strong id="pageCrumb">Nexus Overview</strong></div></div>
+        <div class="topbar-actions"><button class="global-search" id="openCommand" data-act="open-command"><span class="search-glyph" data-icon="search"></span><span>Search Nexus…</span><kbd>Ctrl K</kbd></button><button class="icon-button" id="themeToggle" data-act="theme-toggle" title="Appearance: system. Select next theme." aria-label="Appearance: system. Select next theme.">◐</button><button class="icon-button notification-trigger" id="topNotifications" data-act="notifications-open" aria-label="Open inbox" title="Notifications"><span class="notification-bell" data-icon="bell"></span><i id="topNotificationDot"></i></button><span class="top-divider"></span><button class="top-avatar" id="profileButton" data-act="settings-open" aria-label="Account profile">D</button></div>
       </header>
       <div class="main-content" id="pageContent" aria-live="polite"><div class="loading-shell"><div class="skeleton skeleton-title"></div><div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton skeleton-panel"></div></div></div>
       <footer class="app-footer"><span>DAVONIUM NEXUS <i>✦</i></span><span>Useful Technology, Built with Care.</span><span id="footerEnvironment">SECURE NEXUS</span></footer>
@@ -104,7 +141,7 @@
     </nav>
   </div>
 
-  <div id="modalBackdrop" class="modal-backdrop hidden" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><header class="modal-head"><div><div class="eyebrow" id="modalEyebrow">NEXUS NEXUS</div><h2 id="modalTitle">Create new</h2><p id="modalDescription" class="muted"></p></div><button class="icon-button" id="closeModal" aria-label="Close dialog">×</button></header><div id="modalBody"></div></section></div>
+  <div id="modalBackdrop" class="modal-backdrop hidden" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><header class="modal-head"><div><div class="eyebrow" id="modalEyebrow">NEXUS NEXUS</div><h2 id="modalTitle">Create new</h2><p id="modalDescription" class="muted"></p></div><button class="icon-button" id="closeModal" data-act="close-modal" aria-label="Close dialog">×</button></header><div id="modalBody"></div></section></div>
   <div id="commandBackdrop" class="command-backdrop hidden"><section class="command-palette" role="dialog" aria-modal="true" aria-label="Command search"><div class="command-input-wrap"><span data-icon="search"></span><input id="commandSearch" autocomplete="off" placeholder="Search pages, actions and Nexus…"><kbd>ESC</kbd></div><div id="commandResults" class="command-results"></div><div class="command-foot"><span>↑↓ Navigate</span><span>↵ Open</span><span>Ctrl K Close</span></div></section></div>
   <section id="cookieConsent" class="cookie-consent hidden" aria-label="Cookie and privacy choices"><div class="cookie-consent-copy"><strong>Privacy choices</strong><p>Essential storage supports secure sign-in. Optional usage analytics is off until you choose to enable it.</p><button class="link-button" id="cookieCustomize" data-act="privacy-customize">Customise preferences</button></div><div class="cookie-consent-actions"><button class="btn btn-secondary" id="cookieReject" data-act="privacy-reject">Reject optional</button><button class="btn btn-primary" id="cookieAcceptAll" data-act="privacy-accept">Accept all</button></div></section>
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
