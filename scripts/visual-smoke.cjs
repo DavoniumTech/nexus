@@ -66,6 +66,7 @@ async function main(){
       user
     };
     let activeSession = session;
+    window.__nexusSmokeSignOutScopes = [];
     window.supabase = {
       createClient: function () {
         return {
@@ -80,7 +81,8 @@ async function main(){
               activeSession = session;
               return { data: { session, user }, error: null };
             },
-            signOut: async function () {
+            signOut: async function (options = {}) {
+              window.__nexusSmokeSignOutScopes.push(options.scope || "global");
               activeSession = null;
               return { error: null };
             }
@@ -414,8 +416,47 @@ async function main(){
   await loginPage.locator("#submitDynamicForm").click();
   await loginPage.waitForFunction(() => document.querySelectorAll("[data-ai-conversation]").length === 0);
   assert.equal(mockConversations.length, 0, "Deleting a conversation must remove it from the list");
+  // Normal sign-out must revoke only this browser's session, not every device.
+  await loginPage.locator("#signOut").click();
+  await loginPage.waitForFunction(() => document.querySelector("#authScreen")?.classList.contains("hidden") === false);
+  const signOutScopes = await loginPage.evaluate(() => window.__nexusSmokeSignOutScopes);
+  assert.deepEqual(signOutScopes, ["local"], "Nexus must not revoke the owner's sessions on other devices when signing out here");
   await loginContext.close();
 
+  // A revoked/expired stored refresh token should return to sign-in cleanly.
+  const staleContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+  const stalePage = await staleContext.newPage();
+  stalePage.on("pageerror", error => errors.push("stale-session: " + error.message));
+  await stalePage.addInitScript(() => {
+    window.__nexusStaleSessionScopes = [];
+    window.supabase = {
+      createClient: function () {
+        return {
+          auth: {
+            onAuthStateChange: function () { return { data: { subscription: { unsubscribe: function () {} } } }; },
+            getSession: async function () {
+              return { data: { session: null }, error: { code: "refresh_token_not_found", message: "Invalid Refresh Token: Refresh Token Not Found" } };
+            },
+            signOut: async function (options = {}) {
+              window.__nexusStaleSessionScopes.push(options.scope || "global");
+              return { error: null };
+            }
+          }
+        };
+      }
+    };
+  });
+  await stalePage.route(/supabase-js@2/, route => route.fulfill({
+    status: 200,
+    contentType: "application/javascript",
+    body: "/* Supabase auth is supplied by the isolated stale-session mock. */"
+  }));
+  await stalePage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
+  await stalePage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("saved Nexus session expired"));
+  assert.ok(await stalePage.locator("#authScreen").isVisible(), "An expired saved session must leave the sign-in screen usable");
+  assert.deepEqual(await stalePage.evaluate(() => window.__nexusStaleSessionScopes), ["local"],
+    "Stale refresh-token recovery must clear only this browser's stored session");
+  await staleContext.close();
 
   assert.deepEqual(errors,[],"Browser page errors must be empty");
   console.log("Nexus desktop and mobile UI, sidebar recovery, ten accents, four appearances, analytics, finance charts and DVNM chat lifecycle smoke tests passed.");
