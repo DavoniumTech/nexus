@@ -46,6 +46,45 @@ async function main(){
    await page.close();
   }
 
+  // Verify the sign-in controls stay interactive while the Supabase CDN is delayed.
+  const authContext = await browser.newContext({ viewport: { width: 1280, height: 850 }, serviceWorkers: "block" });
+  const authPage = await authContext.newPage();
+  authPage.on("pageerror", error => errors.push("sign-in: " + error.message));
+  await authPage.route("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", route => route.abort());
+  await authPage.route("https://unpkg.com/@supabase/supabase-js@2", async route => {
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: `window.supabase = {
+        createClient: function () {
+          return { auth: {
+            onAuthStateChange: function () { return { data: { subscription: { unsubscribe: function () {} } } }; },
+            getSession: async function () { return { data: { session: null }, error: null }; },
+            signInWithPassword: async function () { return { data: { session: null, user: null }, error: { message: "Invalid login credentials" } }; },
+            resetPasswordForEmail: async function () { return { error: null }; }
+          } };
+        }
+      };`
+    });
+  });
+  await authPage.goto("http://127.0.0.1:4173/", { waitUntil: "domcontentloaded" });
+  await authPage.waitForSelector("#authForm");
+  await authPage.locator("#openSetupAuth").click();
+  await authPage.waitForSelector("#modalBackdrop:not(.hidden)");
+  assert.ok((await authPage.locator("#modalTitle").textContent()).includes("Secure Supabase connection"),
+    "Connection settings must open while the external Supabase library is still loading");
+  await authPage.locator("#closeModal").click();
+  await authPage.locator("#authEmail").fill("owner@example.test");
+  await authPage.locator("#authPassword").fill("smoke-test-password");
+  await authPage.locator("#authSubmit").click();
+  await authPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("Invalid login credentials"));
+  assert.ok(await authPage.locator("#authMessage").isVisible(),
+    "The sign-in form must respond after the delayed Supabase library becomes available");
+  await authPage.locator("#forgotPassword").click();
+  await authPage.waitForFunction(() => document.querySelector("#authMessage")?.textContent.includes("Password reset instructions"));
+  await authContext.close();
+
   // Simulate the production sign-in and authenticated company boot with isolated test data.
   const loginContext = await browser.newContext({
     viewport: { width: 1440, height: 900 },
