@@ -74,13 +74,14 @@ async function main(){
   const beforeConnectionClick = await authPage.evaluate(() => ({
     readyState: document.readyState,
     appScript: [...document.scripts].some(script => script.src.endsWith("/app.js")),
+    uiBooted: window.__nexusUiBooted===true,
     setupHandler: typeof document.querySelector("#openSetupAuth")?.onclick,
-    signInHandler: typeof document.querySelector("#authForm")?.onsubmit,
+    signInFormPresent: !!document.querySelector("#authForm"),
     setupVisible: !!document.querySelector("#openSetupAuth") && getComputedStyle(document.querySelector("#openSetupAuth")).pointerEvents
   }));
   console.log("NEXUS_AUTH_BOOT_DIAGNOSTIC", JSON.stringify({ beforeConnectionClick, browserErrors: errors }));
-  assert.equal(beforeConnectionClick.setupHandler, "function",
-    "Connection settings must have a working click handler before the Supabase library loads");
+  assert.equal(beforeConnectionClick.uiBooted, true,
+    "Nexus UI event routing must initialise before the Supabase library loads");
   await authPage.locator("#openSetupAuth").click();
   await authPage.waitForTimeout(100);
   const afterConnectionClick = await authPage.evaluate(() => ({
