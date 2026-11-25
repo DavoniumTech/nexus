@@ -1125,11 +1125,16 @@
   function wire(){
     // One capture-phase router owns every generated navigation and action control.
     // It handles nested SVG targets and prevents duplicate delegated handlers.
+    // Install the sign-in submit handler before any optional UI initialisation.
+    document.addEventListener("submit",event=>{
+      if(event.target?.id==="authForm"){event.preventDefault();void authSubmit(event);}
+    },true);
     document.addEventListener("click",event=>{
       const target=event.target instanceof Element?event.target:event.target?.parentElement;
       if(!target)return;
+      if(target.id==="modalBackdrop"&&event.target===target){event.preventDefault();event.stopPropagation();void closeModal();return;}
+      if(target.id==="commandBackdrop"&&event.target===target){event.preventDefault();event.stopPropagation();hideCommand();return;}
       // Authentication controls use this same capture-phase router as the rest of Nexus.
-      // This avoids relying on separate inline/property handlers for the sign-in shell.
       if(target.closest("#openSetupAuth")){
         event.preventDefault();event.stopPropagation();openSetup(true);return;
       }
@@ -1173,6 +1178,13 @@
         if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
         if(act==="privacy-customize"){openPrivacySettings();return;}
         if(act==="sign-out"){void signOut();return;}
+        if(act==="theme-toggle"){cycleTheme();return;}
+        if(act==="open-command"){showCommand();return;}
+        if(act==="notifications-open"){void navigate("notifications");return;}
+        if(act==="settings-open"){void navigate("settings");return;}
+        if(act==="mobile-menu-open"){$("#sidebar").classList.toggle("open");$("#mobileScrim").classList.toggle("show");return;}
+        if(act==="mobile-menu-close"){$("#sidebar").classList.remove("open");$("#mobileScrim").classList.remove("show");if(state.currentPage==="intelligence")$("#app").classList.add("ai-mode");return;}
+        if(act==="close-modal"){void closeModal();return;}
         if(act==="ai-send"){void sendAIMessage();return;}
         if(act==="modal-submit"){$("nexusDynamicForm")?.requestSubmit();return;}
         if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
@@ -1204,10 +1216,6 @@
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
-    document.addEventListener("submit",event=>{
-      if(event.target?.id==="authForm"){event.preventDefault();void authSubmit(event);}
-    },true);
-    window.__nexusUiBooted=true;
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
     $("cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});
@@ -1217,13 +1225,21 @@
     if(!navigator.onLine)document.body.classList.add("is-offline");
     window.addEventListener("appinstalled",()=>trackEvent("pwa_installed"));
     if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(err=>console.warn("Nexus offline shell",err)));
-    $("openCommand").onclick=showCommand;$("topNotifications").onclick=()=>navigate("notifications");$("profileButton").onclick=()=>navigate("settings");$("workspaceSwitch").onclick=()=>navigate("settings");$("connectionDetails").onclick=()=>navigate("settings");
-    $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");if(state.currentPage==="intelligence")$("app").classList.add("ai-mode");};
-    $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
-    $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
+    $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));
+    $("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
 
     document.addEventListener("keydown",e=>{if(e.target?.id==="aiMessageInput"&&e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#aiComposer")?.requestSubmit();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();if($("commandBackdrop").classList.contains("hidden"))showCommand();else hideCommand();}else if(e.key==="Escape"){hideCommand();if(!$ ("modalBackdrop").classList.contains("hidden"))closeModal();}else if(e.key==="/"&&!/input|textarea|select/i.test(document.activeElement?.tagName||"")){e.preventDefault();showCommand();}});
   }
 
-  document.addEventListener("DOMContentLoaded",()=>{wire();restore();});
+  document.addEventListener("DOMContentLoaded",()=>{
+    try{
+      wire();
+      window.__nexusUiBooted=true;
+    }catch(error){
+      window.__nexusWireError=error instanceof Error?error.message:String(error);
+      console.error("Nexus interface initialisation failed",error);
+      try{authMessage("Nexus controls could not initialise: "+window.__nexusWireError,true);}catch(_){}
+    }
+    void restore();
+  });
 })();
