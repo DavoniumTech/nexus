@@ -75,7 +75,7 @@ async function main(){
     readyState: document.readyState,
     appScript: [...document.scripts].some(script => script.src.endsWith("/app.js")),
     uiBooted: window.__nexusUiBooted===true,
-    setupHandler: typeof document.querySelector("#openSetupAuth")?.onclick,
+    wireError: window.__nexusWireError||null,
     signInFormPresent: !!document.querySelector("#authForm"),
     setupVisible: !!document.querySelector("#openSetupAuth") && getComputedStyle(document.querySelector("#openSetupAuth")).pointerEvents
   }));
