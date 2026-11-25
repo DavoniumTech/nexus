@@ -69,7 +69,7 @@ require("setSidebarCollapsed" in app and "expandNav" in app and 'id="expandNav"'
 require("mobile-more" in app and 'class="mobile-app-nav"' in html and ".mobile-app-nav" in css, "Mobile app navigation is missing")
 require('class="notification-bell"' in html and 'data-icon="bell"' in html, "Top navigation notification bell icon is missing")
 require("Elevated Black" not in app, "Appearance label still contains the rejected Elevated Black wording")
-require("davonium-nexus-shell-v5-20261125" in worker, "PWA shell cache must be versioned for the current release")
+require("davonium-nexus-shell-v6-20261125" in worker, "PWA shell cache must be versioned for the current release")
 
 for control in ("cookieConsent", "cookieAcceptAll", "cookieReject", "cookieCustomize", "manifest.webmanifest"):
     require(control in html, f"HTML app shell missing {control}")
@@ -82,6 +82,8 @@ require('url.pathname.includes("/auth/")' in worker, "service worker must not ca
 require('url.pathname.includes("/storage/")' in worker, "service worker must not cache private storage calls")
 require("SUPABASE_SERVICE_ROLE_KEY" not in app and "GEMINI_API_KEY" not in app and "NEXUS_AI_LEDGER_KEY" not in app, "browser bundle must not contain service/provider/ledger key values or environment names")
 require('auth.signOut({scope:"local"})' in app, "normal sign-out must revoke only the current browser session")
+require("waitForSupabaseLibrary" in app and "Nexus loaded, but the secure sign-in library could not be reached" in app, "Nexus must wire its UI independently of the Supabase CDN")
+require("https://unpkg.com/@supabase/supabase-js@2" in html and "script.async = true" in html, "Supabase CDN must load asynchronously with a fallback")
 require("refresh_token_not_found" in app and "isMissingRefreshToken" in app, "stale saved refresh tokens must be recoverable without revoking other sessions")
 
 print("Nexus release contract passed: finance schema, analytics routes, AI tools, privacy controls, and offline PWA shell.")
