@@ -1178,6 +1178,7 @@
         if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
         if(act==="privacy-customize"){openPrivacySettings();return;}
         if(act==="sign-out"){void signOut();return;}
+        if(act==="sign-in"){void authSubmit({preventDefault(){}});return;}
         if(act==="theme-toggle"){cycleTheme();return;}
         if(act==="open-command"){showCommand();return;}
         if(act==="notifications-open"){void navigate("notifications");return;}
