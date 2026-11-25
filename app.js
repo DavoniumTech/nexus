@@ -1128,6 +1128,14 @@
     document.addEventListener("click",event=>{
       const target=event.target instanceof Element?event.target:event.target?.parentElement;
       if(!target)return;
+      // Authentication controls use this same capture-phase router as the rest of Nexus.
+      // This avoids relying on separate inline/property handlers for the sign-in shell.
+      if(target.closest("#openSetupAuth")){
+        event.preventDefault();event.stopPropagation();openSetup(true);return;
+      }
+      if(target.closest("#forgotPassword")){
+        event.preventDefault();event.stopPropagation();void forgotPassword();return;
+      }
       const financeTab=target.closest("[data-finance-tab]");
       if(financeTab&&$("#pageContent")?.contains(financeTab)){
         event.preventDefault();event.stopPropagation();
@@ -1196,7 +1204,10 @@
 
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
-    $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
+    document.addEventListener("submit",event=>{
+      if(event.target?.id==="authForm"){event.preventDefault();void authSubmit(event);}
+    },true);
+    window.__nexusUiBooted=true;
     $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
     $("cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});
