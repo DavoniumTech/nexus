@@ -50,7 +50,13 @@ async function main(){
   const authContext = await browser.newContext({ viewport: { width: 1280, height: 850 }, serviceWorkers: "block" });
   const authPage = await authContext.newPage();
   authPage.on("pageerror", error => errors.push("sign-in: " + error.message));
-  authPage.on("console", message => { if (message.type() === "error") errors.push("sign-in console: " + message.text()); });
+  authPage.on("console", message => {
+    if(message.type()!=="error")return;
+    // The test intentionally aborts jsDelivr to exercise the fallback CDN.
+    // Ignore only the resulting expected resource-load warning; real page errors remain fatal.
+    if(message.text()==="Failed to load resource: net::ERR_FAILED")return;
+    errors.push("sign-in console: " + message.text());
+  });
   await authPage.route("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", route => route.abort());
   await authPage.route("https://unpkg.com/@supabase/supabase-js@2", async route => {
     await new Promise(resolve => setTimeout(resolve, 1200));
