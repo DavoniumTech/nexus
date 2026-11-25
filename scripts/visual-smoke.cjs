@@ -417,6 +417,10 @@ async function main(){
   await loginPage.waitForFunction(() => document.querySelectorAll("[data-ai-conversation]").length === 0);
   assert.equal(mockConversations.length, 0, "Deleting a conversation must remove it from the list");
   // Normal sign-out must revoke only this browser's session, not every device.
+  // Return to the normal shell before testing the global sidebar sign-out control.
+  await loginPage.locator(".ai-return-home").click();
+  await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
+  await loginPage.locator("#signOut").waitFor({ state: "visible" });
   await loginPage.locator("#signOut").click();
   await loginPage.waitForFunction(() => document.querySelector("#authScreen")?.classList.contains("hidden") === false);
   const signOutScopes = await loginPage.evaluate(() => window.__nexusSmokeSignOutScopes);
