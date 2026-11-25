@@ -422,9 +422,17 @@ async function main(){
   await loginPage.waitForSelector("#pageContent .os-command-centre", { state: "visible" });
   await loginPage.locator("#signOut").waitFor({ state: "visible" });
   await loginPage.locator("#signOut").click();
-  await loginPage.waitForFunction(() => document.querySelector("#authScreen")?.classList.contains("hidden") === false);
-  const signOutScopes = await loginPage.evaluate(() => window.__nexusSmokeSignOutScopes);
-  assert.deepEqual(signOutScopes, ["local"], "Nexus must not revoke the owner's sessions on other devices when signing out here");
+  await loginPage.waitForTimeout(350);
+  const signOutDiagnostic = await loginPage.evaluate(() => ({
+    scopes: window.__nexusSmokeSignOutScopes,
+    authClass: document.querySelector("#authScreen")?.className,
+    appClass: document.querySelector("#app")?.className,
+    connection: document.querySelector("#connectionText")?.textContent
+  }));
+  console.log("NEXUS_SIGNOUT_DIAGNOSTIC", JSON.stringify({ ...signOutDiagnostic, browserErrors: errors }));
+  assert.deepEqual(signOutDiagnostic.scopes, ["local"], "Nexus must not revoke the owner's sessions on other devices when signing out here");
+  assert.ok(!String(signOutDiagnostic.authClass || "").split(/\\s+/).includes("hidden"),
+    "Signing out must return the browser to the sign-in screen");
   await loginContext.close();
 
   // A revoked/expired stored refresh token should return to sign-in cleanly.
