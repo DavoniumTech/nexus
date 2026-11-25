@@ -212,6 +212,12 @@
   function canAny(...keys){return keys.some(k=>state.permissionMap?.[k]===true);}
   async function safe(promise){try{return {ok:true,data:await promise};}catch(error){return {ok:false,error};}}
 
+  function isMissingRefreshToken(error){
+    const code=String(error?.code||"").toLowerCase();
+    const message=String(error?.message||error||"").toLowerCase();
+    return code==="refresh_token_not_found"||
+      (message.includes("refresh token")&&/(not found|invalid|revoked|expired)/.test(message));
+  }
   async function restore(){
     applyTheme();
     if(!connectedClient()){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
@@ -219,9 +225,22 @@
       if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;showAuth();}
       else if(session){state.session=session;state.user=session.user;}
     });
-    const {data,error}=await state.sb.auth.getSession();
-    if(error){showAuth(error.message,true);return;}
-    if(data.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
+    let sessionResult;
+    try{sessionResult=await state.sb.auth.getSession();}
+    catch(error){sessionResult={data:{session:null},error};}
+    const {data,error}=sessionResult||{data:{session:null},error:null};
+    if(error){
+      if(isMissingRefreshToken(error)){
+        try{await state.sb.auth.signOut({scope:"local"});}
+        catch(cleanupError){console.warn("Nexus local session cleanup",cleanupError);}
+        state.session=null;state.user=null;
+        showAuth("Your saved Nexus session expired or was revoked. Sign in again.");
+        return;
+      }
+      showAuth(error.message||"Nexus could not restore this browser session.",true);
+      return;
+    }
+    if(data?.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
   }
   async function authSubmit(event){event.preventDefault();if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim(),password=$("authPassword").value;const btn=$("authSubmit");btn.disabled=true;btn.textContent="Verifying secure access…";try{const {data,error}=await state.sb.auth.signInWithPassword({email,password});if(error)throw error;state.session=data.session;state.user=data.user;await boot();}catch(error){authMessage(error.message,true);}finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}}
   async function forgotPassword(){if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim();if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}try{const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;authMessage("Password reset instructions have been requested. Check your email.");}catch(error){authMessage(error.message,true);}}
@@ -243,7 +262,7 @@
       if(inviteId){try{await api("invitations","accept",{invitation_id:inviteId});history.replaceState({},"",location.pathname);notify("Nexus invitation accepted.","success");}catch(error){notify(error.message,"error");}}
       await updateInboxCount();await setupRealtime();await navigate(state.role==="client"?"portal":"overview");
     }catch(error){console.error("Nexus boot",error);connection(false,"Nexus access needs attention");showAuth(error.message,true);}finally{state.booting=false;}}
-  async function signOut(){try{await state.sb?.auth.signOut();}catch(e){notify(e.message,"error");}await clearRealtime();state.session=null;state.user=null;state.cache={};showAuth();}
+  async function signOut(){try{const {error}=await state.sb?.auth.signOut({scope:"local"})||{};if(error)throw error;}catch(e){notify(e.message||"The current browser session could not be revoked cleanly.","error");}await clearRealtime();state.session=null;state.user=null;state.cache={};showAuth();}
   async function updateInboxCount(){const r=await safe(api("notifications","inbox.list",{limit:100,unread_only:true}));if(r.ok){const n=records(r.data);const count=n.length;const c=$("notificationCount"),t=$("topNotificationDot");c.textContent=count?count:"";t.classList.toggle("show",count>0);}}
   async function clearRealtime(){
     if(state.realtimeRefreshTimer){clearTimeout(state.realtimeRefreshTimer);state.realtimeRefreshTimer=null;}
@@ -1086,6 +1105,8 @@
       const mobileMore=target.closest('[data-act="mobile-more"]');
       if(mobileMore){
         event.preventDefault();event.stopPropagation();
+        // Intelligence hides the global sidebar; reveal it temporarily so More remains usable on phones.
+        if(state.currentPage==="intelligence")$("#app")?.classList.remove("ai-mode");
         $("#sidebar")?.classList.add("open");
         $("#mobileScrim")?.classList.add("show");
         return;
@@ -1104,6 +1125,7 @@
         if(act==="privacy-reject"){savePrivacyConsent(false);notify("Optional analytics disabled.","success");return;}
         if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
         if(act==="privacy-customize"){openPrivacySettings();return;}
+        if(act==="sign-out"){void signOut();return;}
         if(act==="ai-send"){void sendAIMessage();return;}
         if(act==="modal-submit"){$("nexusDynamicForm")?.requestSubmit();return;}
         if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
@@ -1136,7 +1158,7 @@
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
-    $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
+    $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
     $("cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});
     $("cookieCustomize")?.addEventListener("click",openPrivacySettings);showPrivacyBanner();
@@ -1146,7 +1168,7 @@
     window.addEventListener("appinstalled",()=>trackEvent("pwa_installed"));
     if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(err=>console.warn("Nexus offline shell",err)));
     $("openCommand").onclick=showCommand;$("topNotifications").onclick=()=>navigate("notifications");$("profileButton").onclick=()=>navigate("settings");$("workspaceSwitch").onclick=()=>navigate("settings");$("connectionDetails").onclick=()=>navigate("settings");
-    $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");};
+    $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");if(state.currentPage==="intelligence")$("app").classList.add("ai-mode");};
     $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
     $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
 
