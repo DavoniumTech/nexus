@@ -16,7 +16,44 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Load Supabase without blocking the Nexus interface. The app's controls must remain
+    // responsive even when a third-party CDN is slow or unavailable.
+    (() => {
+      let resolveReady;
+      window.__nexusSupabaseReady = new Promise(resolve => { resolveReady = resolve; });
+      const sources = [
+        "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+        "https://unpkg.com/@supabase/supabase-js@2"
+      ];
+      const load = index => {
+        if (window.supabase?.createClient) { resolveReady(true); return; }
+        if (index >= sources.length) { resolveReady(false); return; }
+        const script = document.createElement("script");
+        script.src = sources[index];
+        script.async = true;
+        let settled = false;
+        const retry = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          script.remove();
+          load(index + 1);
+        };
+        const timeout = setTimeout(retry, 8000);
+        script.onload = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (window.supabase?.createClient) resolveReady(true);
+          else load(index + 1);
+        };
+        script.onerror = retry;
+        document.head.appendChild(script);
+      };
+      load(0);
+    })();
+  </script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="ambient-glow glow-one"></div><div class="ambient-glow glow-two"></div><div class="starfield"></div></div>
