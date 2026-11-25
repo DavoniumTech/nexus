@@ -212,6 +212,12 @@
   function canAny(...keys){return keys.some(k=>state.permissionMap?.[k]===true);}
   async function safe(promise){try{return {ok:true,data:await promise};}catch(error){return {ok:false,error};}}
 
+  function isMissingRefreshToken(error){
+    const code=String(error?.code||"").toLowerCase();
+    const message=String(error?.message||error||"").toLowerCase();
+    return code==="refresh_token_not_found"||
+      (message.includes("refresh token")&&/(not found|invalid|revoked|expired)/.test(message));
+  }
   async function restore(){
     applyTheme();
     if(!connectedClient()){showAuth("Add your Supabase project publishable/anon key in Connection settings. No service-role key is accepted here.");openSetup(true);return;}
@@ -219,9 +225,22 @@
       if(event==="SIGNED_OUT"){void clearRealtime();state.session=null;state.user=null;showAuth();}
       else if(session){state.session=session;state.user=session.user;}
     });
-    const {data,error}=await state.sb.auth.getSession();
-    if(error){showAuth(error.message,true);return;}
-    if(data.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
+    let sessionResult;
+    try{sessionResult=await state.sb.auth.getSession();}
+    catch(error){sessionResult={data:{session:null},error};}
+    const {data,error}=sessionResult||{data:{session:null},error:null};
+    if(error){
+      if(isMissingRefreshToken(error)){
+        try{await state.sb.auth.signOut({scope:"local"});}
+        catch(cleanupError){console.warn("Nexus local session cleanup",cleanupError);}
+        state.session=null;state.user=null;
+        showAuth("Your saved Nexus session expired or was revoked. Sign in again.");
+        return;
+      }
+      showAuth(error.message||"Nexus could not restore this browser session.",true);
+      return;
+    }
+    if(data?.session){state.session=data.session;state.user=data.session.user;await boot();}else showAuth();
   }
   async function authSubmit(event){event.preventDefault();if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim(),password=$("authPassword").value;const btn=$("authSubmit");btn.disabled=true;btn.textContent="Verifying secure access…";try{const {data,error}=await state.sb.auth.signInWithPassword({email,password});if(error)throw error;state.session=data.session;state.user=data.user;await boot();}catch(error){authMessage(error.message,true);}finally{btn.disabled=false;btn.innerHTML='Sign in to Nexus <span>↗</span>';}}
   async function forgotPassword(){if(!state.sb){openSetup(true);return;}const email=$("authEmail").value.trim();if(!email){authMessage("Enter your account email first, then select Forgot password.",true);return;}try{const {error}=await state.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;authMessage("Password reset instructions have been requested. Check your email.");}catch(error){authMessage(error.message,true);}}
@@ -243,7 +262,7 @@
       if(inviteId){try{await api("invitations","accept",{invitation_id:inviteId});history.replaceState({},"",location.pathname);notify("Nexus invitation accepted.","success");}catch(error){notify(error.message,"error");}}
       await updateInboxCount();await setupRealtime();await navigate(state.role==="client"?"portal":"overview");
     }catch(error){console.error("Nexus boot",error);connection(false,"Nexus access needs attention");showAuth(error.message,true);}finally{state.booting=false;}}
-  async function signOut(){try{await state.sb?.auth.signOut();}catch(e){notify(e.message,"error");}await clearRealtime();state.session=null;state.user=null;state.cache={};showAuth();}
+  async function signOut(){try{const {error}=await state.sb?.auth.signOut({scope:"local"})||{};if(error)throw error;}catch(e){notify(e.message||"The current browser session could not be revoked cleanly.","error");}await clearRealtime();state.session=null;state.user=null;state.cache={};showAuth();}
   async function updateInboxCount(){const r=await safe(api("notifications","inbox.list",{limit:100,unread_only:true}));if(r.ok){const n=records(r.data);const count=n.length;const c=$("notificationCount"),t=$("topNotificationDot");c.textContent=count?count:"";t.classList.toggle("show",count>0);}}
   async function clearRealtime(){
     if(state.realtimeRefreshTimer){clearTimeout(state.realtimeRefreshTimer);state.realtimeRefreshTimer=null;}
