@@ -101,7 +101,8 @@ async function main(){
   await authPage.locator("#authEmail").fill("owner@example.test");
   await authPage.locator("#authPassword").fill("smoke-test-password");
   await authPage.locator("#authSubmit").click();
-  await authPage.waitForTimeout(350);
+  await authPage.waitForFunction(() => window.__nexusSmokeSignInCalled === true ||
+    (document.querySelector("#authMessage")?.textContent||"").length>0, null, { timeout: 5000 });
   const signInDiagnostic = await authPage.evaluate(() => ({
     authMessage: document.querySelector("#authMessage")?.textContent,
     authMessageClass: document.querySelector("#authMessage")?.className,
