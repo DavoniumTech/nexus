@@ -1105,6 +1105,8 @@
       const mobileMore=target.closest('[data-act="mobile-more"]');
       if(mobileMore){
         event.preventDefault();event.stopPropagation();
+        // Intelligence hides the global sidebar; reveal it temporarily so More remains usable on phones.
+        if(state.currentPage==="intelligence")$("#app")?.classList.remove("ai-mode");
         $("#sidebar")?.classList.add("open");
         $("#mobileScrim")?.classList.add("show");
         return;
@@ -1123,6 +1125,7 @@
         if(act==="privacy-reject"){savePrivacyConsent(false);notify("Optional analytics disabled.","success");return;}
         if(act==="privacy-accept"){savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)void trackEvent("page_view",state.currentPage);return;}
         if(act==="privacy-customize"){openPrivacySettings();return;}
+        if(act==="sign-out"){void signOut();return;}
         if(act==="ai-send"){void sendAIMessage();return;}
         if(act==="modal-submit"){$("nexusDynamicForm")?.requestSubmit();return;}
         if(act==="toggle-sidebar"){setSidebarCollapsed(!state.isCollapsed);return;}
@@ -1155,7 +1158,7 @@
     applyAccentTheme();setSidebarCollapsed(state.isCollapsed,false);
     document.querySelectorAll("[data-icon]").forEach(el=>el.innerHTML=icon(el.dataset.icon));
     $("authForm").addEventListener("submit",authSubmit);$("forgotPassword").onclick=forgotPassword;$("openSetupAuth").onclick=()=>openSetup(true);
-    $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});$("signOut").onclick=signOut;
+    $("themeToggle").onclick=cycleTheme;window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change",()=>{if(state.theme==="system")applyTheme();});
     $("cookieAcceptAll")?.addEventListener("click",()=>{savePrivacyConsent(true);notify("Optional analytics enabled.","success");if(state.user)trackEvent("page_view",state.currentPage);});
     $("cookieReject")?.addEventListener("click",()=>{savePrivacyConsent(false);notify("Optional analytics disabled.","success");});
     $("cookieCustomize")?.addEventListener("click",openPrivacySettings);showPrivacyBanner();
@@ -1165,7 +1168,7 @@
     window.addEventListener("appinstalled",()=>trackEvent("pwa_installed"));
     if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(err=>console.warn("Nexus offline shell",err)));
     $("openCommand").onclick=showCommand;$("topNotifications").onclick=()=>navigate("notifications");$("profileButton").onclick=()=>navigate("settings");$("workspaceSwitch").onclick=()=>navigate("settings");$("connectionDetails").onclick=()=>navigate("settings");
-    $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");};
+    $("mobileMenu").onclick=()=>{$("sidebar").classList.toggle("open");$("mobileScrim").classList.toggle("show");};$("mobileScrim").onclick=()=>{$("sidebar").classList.remove("open");$("mobileScrim").classList.remove("show");if(state.currentPage==="intelligence")$("app").classList.add("ai-mode");};
     $("collapseNav").onclick=()=>setSidebarCollapsed(!state.isCollapsed);$("expandNav").onclick=()=>setSidebarCollapsed(false);window.matchMedia?.("(max-width: 760px)")?.addEventListener?.("change",()=>setSidebarCollapsed(state.isCollapsed,false));$("closeModal").onclick=closeModal;$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal();});
     $("commandBackdrop").addEventListener("click",e=>{if(e.target===$("commandBackdrop"))hideCommand();});$("commandSearch").addEventListener("input",e=>renderCommandResults(e.target.value));$("commandSearch").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();moveCommand(1);}else if(e.key==="ArrowUp"){e.preventDefault();moveCommand(-1);}else if(e.key==="Enter"){e.preventDefault();executeCommand(state.commandIndex);}else if(e.key==="Escape")hideCommand();});
 
